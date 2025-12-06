@@ -117,7 +117,7 @@ export default function InvestmentsPage() {
                 <div className="flex flex-col items-center justify-center h-64 text-red-500">
                     <p className="text-lg font-semibold">Error loading investments</p>
                     <p className="text-sm">{error || 'No data available'}</p>
-                    <button 
+                    <button
                         onClick={fetchInvestments}
                         className="mt-4 px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700"
                     >
@@ -255,7 +255,9 @@ export default function InvestmentsPage() {
                                     </Pie>
                                     <Tooltip
                                         formatter={(value: number) => `₹${value.toLocaleString()}`}
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', color: '#111827' }}
+                                        labelStyle={{ color: '#111827' }}
+                                        itemStyle={{ color: '#111827' }}
                                     />
                                 </PieChart>
                             </ResponsiveContainer>
@@ -308,7 +310,9 @@ export default function InvestmentsPage() {
                                     />
                                     <Tooltip
                                         cursor={{ fill: 'transparent' }}
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', color: '#111827' }}
+                                        labelStyle={{ color: '#111827' }}
+                                        itemStyle={{ color: '#111827' }}
                                         formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Amount']}
                                     />
                                     <Bar
@@ -351,7 +355,9 @@ export default function InvestmentsPage() {
                                         tickFormatter={(value) => `₹${value >= 1000 ? `${value / 1000}k` : value}`}
                                     />
                                     <Tooltip
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', color: '#111827' }}
+                                        labelStyle={{ color: '#111827' }}
+                                        itemStyle={{ color: '#111827' }}
                                         formatter={(value: number) => [`₹${value.toLocaleString()}`, 'Cumulative']}
                                     />
                                     <Line
@@ -399,7 +405,9 @@ export default function InvestmentsPage() {
                                     />
                                     <Tooltip
                                         cursor={{ fill: 'transparent' }}
-                                        contentStyle={{ backgroundColor: 'rgba(255, 255, 255, 0.9)', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}
+                                        contentStyle={{ backgroundColor: '#ffffff', borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)', color: '#111827' }}
+                                        labelStyle={{ color: '#111827' }}
+                                        itemStyle={{ color: '#111827' }}
                                         formatter={(value: number) => [value, 'Investments']}
                                     />
                                     <Bar
