@@ -68,7 +68,7 @@ export function DatePicker({ label, value, onChange, error, className }: DatePic
                             leaveFrom="opacity-100 translate-y-0"
                             leaveTo="opacity-0 translate-y-1"
                         >
-                            <Popover.Panel className="absolute z-50 mt-2 w-[320px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-4">
+                            <Popover.Panel className="absolute z-50 mt-2 left-0 right-0 sm:left-auto sm:right-auto sm:w-[320px] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 p-4">
                                 <div className="flex items-center justify-between mb-4">
                                     <button
                                         type="button"

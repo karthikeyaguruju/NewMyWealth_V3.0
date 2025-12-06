@@ -49,7 +49,7 @@ export function Modal({ isOpen, onClose, title, children, size = 'md' }: ModalPr
                         >
                             <Dialog.Panel
                                 className={cn(
-                                    'w-full transform overflow-hidden rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-6 text-left align-middle shadow-2xl transition-all',
+                                    'w-full transform rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700 p-6 text-left align-middle shadow-2xl transition-all',
                                     sizes[size]
                                 )}
                             >
