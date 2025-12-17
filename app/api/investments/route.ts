@@ -28,11 +28,15 @@ export async function GET(request: NextRequest) {
         const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
         // Get all ACTIVE investment transactions (exclude terminated ones)
+        // Note: Old investments may have null status, so we need to include them
         const investments = await prisma.transaction.findMany({
             where: {
                 userId,
                 type: 'investment',
-                status: { not: 'terminated' }, // Only count active investments
+                OR: [
+                    { status: null },           // Old investments without status field
+                    { status: { not: 'terminated' } },  // Active investments
+                ],
                 ...(startDate && endDate && {
                     date: {
                         gte: startDate,
