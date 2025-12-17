@@ -27,9 +27,9 @@ function getGreeting(): string {
 
 // Get first name from full name
 function getFirstName(fullName: string): string {
-    if (!fullName) return 'there';
+    if (!fullName) return 'There';
     const firstName = fullName.split(' ')[0];
-    return firstName || 'there';
+    return firstName || 'There';
 }
 
 export function TopBar({ onMenuClick }: TopBarProps) {

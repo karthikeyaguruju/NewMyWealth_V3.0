@@ -27,16 +27,12 @@ export async function GET(request: NextRequest) {
         const startDate = startDateStr ? new Date(startDateStr) : undefined;
         const endDate = endDateStr ? new Date(endDateStr) : undefined;
 
-        // Get all ACTIVE investment transactions (exclude terminated ones)
-        // Note: Old investments may have null status, so we need to include them
-        const investments = await prisma.transaction.findMany({
+        // Get all investment transactions first
+        const allInvestments = await prisma.transaction.findMany({
             where: {
                 userId,
                 type: 'investment',
-                OR: [
-                    { status: null },           // Old investments without status field
-                    { status: { not: 'terminated' } },  // Active investments
-                ],
+                // Apply date filter if provided
                 ...(startDate && endDate && {
                     date: {
                         gte: startDate,
@@ -48,6 +44,10 @@ export async function GET(request: NextRequest) {
                 date: 'asc',
             },
         });
+
+        // Filter out terminated investments in JavaScript
+        // This correctly handles null/undefined status (old records)
+        const investments = allInvestments.filter(t => t.status !== 'terminated');
 
         // Total invested
         const totalInvested = investments.reduce((sum, t) => sum + t.amount, 0);
