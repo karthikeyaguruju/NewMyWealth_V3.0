@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Plus, Pencil, Trash2, Search, Filter, X, Calendar, ChevronLeft, ChevronRight, CheckCircle, BanknoteIcon } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, Filter, X, Calendar, ChevronLeft, ChevronRight, CheckCircle, XCircle, BanknoteIcon } from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
@@ -421,7 +421,7 @@ export default function TransactionsPage() {
                                                     {transaction.notes || '-'}
                                                 </td>
                                                 <td className="py-4 px-6 text-center">
-                                                    {/* Show status badge for investments */}
+                                                    {/* Show status badge based on transaction type */}
                                                     {transaction.type === 'investment' ? (
                                                         transaction.status === 'terminated' ? (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
@@ -434,6 +434,16 @@ export default function TransactionsPage() {
                                                                 Active
                                                             </span>
                                                         )
+                                                    ) : transaction.type === 'income' ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+                                                            <CheckCircle size={12} />
+                                                            Credit
+                                                        </span>
+                                                    ) : transaction.type === 'expense' ? (
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                                                            <XCircle size={12} />
+                                                            Debit
+                                                        </span>
                                                     ) : (
                                                         <span className="text-gray-400 text-xs">-</span>
                                                     )}
