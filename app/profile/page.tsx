@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/Layout/DashboardLayout';
 import { Button } from '@/components/ui/Button';
@@ -14,7 +14,22 @@ import { cn } from '@/lib/utils';
 
 type Tab = 'profile' | 'budget' | 'categories' | 'activity';
 
+// Wrapper component to handle Suspense for useSearchParams
 export default function ProfilePage() {
+    return (
+        <Suspense fallback={
+            <DashboardLayout>
+                <div className="flex items-center justify-center h-64">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                </div>
+            </DashboardLayout>
+        }>
+            <ProfilePageContent />
+        </Suspense>
+    );
+}
+
+function ProfilePageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<Tab>('profile');
