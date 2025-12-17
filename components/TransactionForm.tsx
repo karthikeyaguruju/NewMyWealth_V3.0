@@ -7,6 +7,7 @@ import { Select } from '@/components/ui/Select';
 import { Button } from '@/components/ui/Button';
 import { DatePicker } from '@/components/ui/DatePicker';
 import { useToast } from '@/contexts/ToastContext';
+import { useActivityLog } from '@/hooks/useActivityLog';
 
 interface TransactionFormProps {
     isOpen: boolean;
@@ -17,6 +18,7 @@ interface TransactionFormProps {
 
 export function TransactionForm({ isOpen, onClose, onSuccess, transaction }: TransactionFormProps) {
     const { showToast } = useToast();
+    const { logTransactionAdded, logTransactionUpdated } = useActivityLog();
     const [formData, setFormData] = useState({
         type: 'expense',
         categoryGroup: 'Expense',
@@ -111,6 +113,14 @@ export function TransactionForm({ isOpen, onClose, onSuccess, transaction }: Tra
             }
 
             showToast('success', transaction ? 'Transaction updated successfully' : 'Transaction added successfully');
+
+            // Log activity
+            if (transaction) {
+                logTransactionUpdated(parseFloat(formData.amount), formData.category);
+            } else {
+                logTransactionAdded(parseFloat(formData.amount), formData.category, formData.type);
+            }
+
             setLoading(false);
             onSuccess();
             onClose();

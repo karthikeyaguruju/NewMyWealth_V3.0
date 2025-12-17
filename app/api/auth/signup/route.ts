@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
         const defaultCategories = [
             { name: 'Salary', categoryGroup: 'Income', isDefault: true },
             { name: 'Freelancing', categoryGroup: 'Income', isDefault: true },
-            { name: 'Investments', categoryGroup: 'Income', isDefault: true },
+            { name: 'Investment Returns', categoryGroup: 'Income', isDefault: true },
             { name: 'Rent', categoryGroup: 'Expense', isDefault: true },
             { name: 'Groceries', categoryGroup: 'Expense', isDefault: true },
             { name: 'Utilities', categoryGroup: 'Expense', isDefault: true },
@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
             { name: 'Crypto', categoryGroup: 'Investment', isDefault: true },
             { name: 'Gold', categoryGroup: 'Investment', isDefault: true },
             { name: 'Bonds', categoryGroup: 'Investment', isDefault: true },
+            { name: 'Fixed Deposits', categoryGroup: 'Investment', isDefault: true },
         ];
 
         await prisma.category.createMany({

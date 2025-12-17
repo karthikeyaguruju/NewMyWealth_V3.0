@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
-import { LayoutDashboard, ArrowLeftRight, TrendingUp, Settings, LogOut, X, PieChart, Wallet } from 'lucide-react';
+import { LayoutDashboard, ArrowLeftRight, TrendingUp, Settings, LogOut, X, PieChart, Wallet, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
 

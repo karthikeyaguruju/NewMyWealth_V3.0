@@ -1,20 +1,22 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { DashboardLayout } from '@/components/Layout/DashboardLayout';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/Card';
-import { User, Bell, Shield, Trash2, Save, AlertTriangle, FolderOpen } from 'lucide-react';
+import { User, Bell, Shield, Trash2, Save, AlertTriangle, FolderOpen, Clock } from 'lucide-react';
 import { CategoryManager } from '@/components/CategoryManager';
 import { BudgetSettings } from '@/components/Settings/BudgetSettings';
+import { ActivityLogTab } from '@/components/Settings/ActivityLogTab';
 import { cn } from '@/lib/utils';
 
-type Tab = 'profile' | 'budget' | 'categories';
+type Tab = 'profile' | 'budget' | 'categories' | 'activity';
 
 export default function ProfilePage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [activeTab, setActiveTab] = useState<Tab>('profile');
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
@@ -34,6 +36,14 @@ export default function ProfilePage() {
         newPassword: '',
         confirmPassword: '',
     });
+
+    // Handle tab from URL query parameter
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && ['profile', 'budget', 'categories', 'activity'].includes(tab)) {
+            setActiveTab(tab as Tab);
+        }
+    }, [searchParams]);
 
     useEffect(() => {
         fetchUserProfile();
@@ -152,6 +162,7 @@ export default function ProfilePage() {
         { id: 'profile', label: 'Profile Settings', icon: User },
         { id: 'budget', label: 'Budget Tracker', icon: Bell },
         { id: 'categories', label: 'Categories', icon: FolderOpen },
+        { id: 'activity', label: 'Activity Log', icon: Clock },
     ];
 
     return (
@@ -166,7 +177,10 @@ export default function ProfilePage() {
                         return (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id as Tab)}
+                                onClick={() => {
+                                    setActiveTab(tab.id as Tab);
+                                    router.push(`/profile?tab=${tab.id}`, { scroll: false });
+                                }}
                                 className={cn(
                                     'flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap',
                                     activeTab === tab.id
@@ -304,6 +318,13 @@ export default function ProfilePage() {
                 {activeTab === 'categories' && (
                     <div className="animate-fade-in">
                         <CategoryManager />
+                    </div>
+                )}
+
+                {/* Activity Log Tab */}
+                {activeTab === 'activity' && (
+                    <div className="animate-fade-in">
+                        <ActivityLogTab />
                     </div>
                 )}
             </div>

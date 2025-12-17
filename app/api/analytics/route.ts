@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     const totalInvestments = transactions
-      .filter((t) => t.type === 'investment')
+      .filter((t) => t.type === 'investment' && t.status !== 'terminated')
       .reduce((sum, t) => sum + t.amount, 0);
     const netSavings = totalIncome - totalExpenses;
 
@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     const thisMonthInvestments = thisMonthTx
-      .filter((t) => t.type === 'investment')
+      .filter((t) => t.type === 'investment' && t.status !== 'terminated')
       .reduce((sum, t) => sum + t.amount, 0);
 
     // ----- Last month for growth calculations -----
@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
       .filter((t) => t.type === 'expense')
       .reduce((sum, t) => sum + t.amount, 0);
     const lastMonthInvestments = lastMonthTx
-      .filter((t) => t.type === 'investment')
+      .filter((t) => t.type === 'investment' && t.status !== 'terminated')
       .reduce((sum, t) => sum + t.amount, 0);
 
     const incomeGrowth =
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
         .filter((t) => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0);
       const investment = monthTx
-        .filter((t) => t.type === 'investment')
+        .filter((t) => t.type === 'investment' && t.status !== 'terminated')
         .reduce((sum, t) => sum + t.amount, 0);
       monthlyData.push({
         month: monthLabel,
@@ -138,7 +138,7 @@ export async function GET(request: NextRequest) {
         incomeByCategory[t.category] = (incomeByCategory[t.category] || 0) + t.amount;
       } else if (t.type === 'expense') {
         expenseByCategory[t.category] = (expenseByCategory[t.category] || 0) + t.amount;
-      } else if (t.type === 'investment') {
+      } else if (t.type === 'investment' && t.status !== 'terminated') {
         investmentByCategory[t.category] = (investmentByCategory[t.category] || 0) + t.amount;
       }
     });

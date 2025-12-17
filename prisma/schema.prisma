@@ -43,6 +43,7 @@ model Transaction {
   categoryGroup String
   category      String
   subCategory   String?
+  status        String   @default("active") // active, terminated (for FD/Bonds)
   userId        String   @db.ObjectId
   user          User     @relation(fields: [userId], references: [id])
   categoryId    String?  @db.ObjectId
@@ -65,4 +66,16 @@ model Budget {
   updatedAt  DateTime @updatedAt
 
   @@unique([userId, categoryId, month])
+}
+
+model ActivityLog {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId      String   @db.ObjectId
+  action      String   // transaction_added, transaction_updated, transaction_deleted, investment_terminated, budget_set, etc.
+  description String   // Human-readable description
+  icon        String?  // Icon type: success, warning, info, error
+  metadata    Json?    // Extra details (amount, category, transactionId, etc.)
+  createdAt   DateTime @default(now())
+
+  @@index([userId, createdAt])
 }
