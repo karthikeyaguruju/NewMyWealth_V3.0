@@ -131,7 +131,7 @@ export default function LoginPage() {
                             <div className="w-10 h-10 bg-white dark:bg-slate-900 glass shadow-lg rounded-xl flex items-center justify-center">
                                 <Sparkles className="text-primary-600 dark:text-primary-400" size={24} />
                             </div>
-                            <span className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">ANTIGRAVITY</span>
+                            <span className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">My Wealth</span>
                         </div>
                     </div>
 

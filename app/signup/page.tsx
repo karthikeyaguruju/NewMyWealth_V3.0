@@ -137,7 +137,7 @@ export default function SignupPage() {
                             <div className="w-10 h-10 bg-white dark:bg-slate-900 glass shadow-lg rounded-xl flex items-center justify-center">
                                 <Sparkles className="text-primary-600 dark:text-primary-400" size={24} />
                             </div>
-                            <span className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">ANTIGRAVITY</span>
+                            <span className="text-xl font-black text-gray-900 dark:text-white tracking-tighter">My Wealth</span>
                         </div>
                     </div>
 
@@ -174,7 +174,7 @@ export default function SignupPage() {
                                     <Input
                                         type="text"
                                         label="Full Name"
-                                        placeholder="Commander Name"
+                                        placeholder="Full Name"
                                         value={formData.fullName}
                                         onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
                                         leftIcon={<User size={18} className="text-gray-400" />}
@@ -186,7 +186,7 @@ export default function SignupPage() {
                                     <Input
                                         type="email"
                                         label="Email"
-                                        placeholder="commander@email.com"
+                                        placeholder="Email"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                         leftIcon={<Mail size={18} className="text-gray-400" />}

@@ -46,7 +46,7 @@ export function MetricCard({
     };
 
     return (
-        <div className="glass-card p-6 overflow-hidden relative group">
+        <div className="glass-card p-6 overflow-hidden relative group min-h-[140px] flex flex-col justify-between">
             {/* Background Decorative Gradient */}
             <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full opacity-10 bg-gradient-to-br ${colorSchemes[colorScheme]} blur-2xl group-hover:opacity-20 transition-opacity duration-500`} />
 
@@ -66,18 +66,21 @@ export function MetricCard({
                 </div>
             </div>
 
-            {trend !== undefined && (
-                <div className="mt-4 flex items-center gap-2 relative z-10">
-                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${trend >= 0
+            {/* Fixed height trend section to ensure uniform card heights */}
+            <div className="mt-4 relative z-10 min-h-[24px] flex items-center">
+                {trend !== undefined && (
+                    <div className="flex items-center gap-2">
+                        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${trend >= 0
                             ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
                             : 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400'
-                        }`}>
-                        {trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
-                        {Math.abs(trend).toFixed(1)}%
+                            }`}>
+                            {trend >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
+                            {Math.abs(trend).toFixed(1)}%
+                        </div>
+                        <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">vs last month</span>
                     </div>
-                    <span className="text-xs text-gray-400 dark:text-gray-500 font-medium">vs last month</span>
-                </div>
-            )}
+                )}
+            </div>
 
             {/* Hover Sparkle Effect */}
             <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-in-out pointer-events-none" />
