@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { DashboardLayout } from '@/components/Layout/DashboardLayout';
 import { TransactionForm } from '@/components/TransactionForm';
 import { Button } from '@/components/ui/Button';
@@ -27,7 +27,7 @@ interface Transaction {
 // Categories that can be terminated (Fixed Deposits and Bonds)
 const TERMINABLE_CATEGORIES = ['Fixed Deposits', 'Bonds'];
 
-export default function TransactionsPage() {
+function TransactionsContent() {
     const { showToast } = useToast();
     const searchParams = useSearchParams();
     const router = useRouter();
@@ -628,5 +628,19 @@ export default function TransactionsPage() {
                 )}
             </div>
         </DashboardLayout>
+    );
+}
+
+export default function TransactionsPage() {
+    return (
+        <Suspense fallback={
+            <DashboardLayout>
+                <div className="flex items-center justify-center min-h-[60vh]">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                </div>
+            </DashboardLayout>
+        }>
+            <TransactionsContent />
+        </Suspense>
     );
 }
