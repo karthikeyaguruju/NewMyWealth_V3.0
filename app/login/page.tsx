@@ -168,7 +168,7 @@ export default function LoginPage() {
                                     <Input
                                         type="email"
                                         label="Email"
-                                        placeholder="commander@antigravity.io"
+                                        placeholder="name@gmail.com"
                                         value={formData.email}
                                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                                         leftIcon={<Mail size={18} className="text-gray-400" />}
