@@ -17,6 +17,25 @@ model User {
   categories   Category[]
   transactions Transaction[]
   budgets      Budget[]
+  stocks       Stock[]
+}
+
+model Stock {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  symbol      String   // E.g., AAPL, TSLA, RELIANCE
+  name        String   // E.g., Apple Inc.
+  quantity    Float
+  buyPrice    Float    // Average buying price
+  sellPrice   Float?   // Last selling price (if applicable)
+  currentPrice Float?  // Current market price (for valuation)
+  type        String   // BUY, SELL
+  totalValue  Float?   // Derived or stored: quantity * bugPrice/currentPrice
+  userId      String   @db.ObjectId
+  user        User     @relation(fields: [userId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Category {

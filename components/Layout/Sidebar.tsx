@@ -17,7 +17,8 @@ import {
     FolderOpen,
     Clock,
     Plus,
-    CreditCard
+    CreditCard,
+    LineChart
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -47,6 +48,11 @@ const mainItems = [
         name: 'Investments',
         href: '/investments',
         icon: TrendingUp,
+    },
+    {
+        name: 'Stocks',
+        href: '/stocks',
+        icon: LineChart,
     },
     {
         name: 'Analytics',
