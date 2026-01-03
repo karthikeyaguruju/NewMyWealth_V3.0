@@ -10,8 +10,9 @@ import { Select } from '@/components/ui/Select';
 import {
     Plus, Pencil, Trash2, Search, Filter, X, Calendar, ChevronLeft, ChevronRight,
     CheckCircle, XCircle, BanknoteIcon, ArrowUpRight, ArrowDownRight,
-    TrendingUp, Receipt, LayoutGrid
+    TrendingUp, Receipt, LayoutGrid, LineChart
 } from 'lucide-react';
+import { StockForm } from '@/components/Stocks/StockForm';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
@@ -61,11 +62,26 @@ function TransactionsContent() {
         order: 'desc',
     });
 
+    // Stock state
+    const [stocks, setStocks] = useState<any[]>([]);
+    const [stocksLoading, setStocksLoading] = useState(false);
+    const [isStockFormOpen, setIsStockFormOpen] = useState(false);
+    const [editingStock, setEditingStock] = useState<any>(null);
+    const [stockFilters, setStockFilters] = useState({
+        search: '',
+        type: 'all'
+    });
+
     // Pagination state
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
     const ITEMS_PER_PAGE = 5;
+
+    // Stock pagination state
+    const [stockPage, setStockPage] = useState(1);
+    const [totalStockPages, setTotalStockPages] = useState(1);
+    const [totalStockItems, setTotalStockItems] = useState(0);
 
     // Handle auto-opening form if type is provided in URL
     useEffect(() => {
@@ -77,7 +93,6 @@ function TransactionsContent() {
         }
     }, [initialType]);
 
-    // Load transactions on mount and when filters/page change
     useEffect(() => {
         const timer = setTimeout(() => {
             fetchTransactions();
@@ -85,6 +100,54 @@ function TransactionsContent() {
         return () => clearTimeout(timer);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, currentPage]);
+
+    useEffect(() => {
+        setStockPage(1);
+    }, [stockFilters]);
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            fetchStocks();
+        }, 500);
+        return () => clearTimeout(timer);
+    }, [stockPage, stockFilters]);
+
+    const fetchStocks = async () => {
+        try {
+            setStocksLoading(true);
+            const params = new URLSearchParams();
+            params.append('page', stockPage.toString());
+            params.append('limit', '5');
+            if (stockFilters.search) params.append('search', stockFilters.search);
+            if (stockFilters.type !== 'all') params.append('type', stockFilters.type);
+
+            const response = await fetch(`/api/stocks?${params.toString()}`);
+            const data = await response.json();
+            setStocks(data.stocks || []);
+            setTotalStockPages(data.pagination?.pages || 1);
+            setTotalStockItems(data.pagination?.total || 0);
+        } catch (error) {
+            console.error('Failed to fetch stocks:', error);
+        } finally {
+            setStocksLoading(false);
+        }
+    };
+
+    const handleStockDelete = async (id: string) => {
+        if (!confirm('Are you sure you want to delete this stock?')) return;
+        try {
+            const response = await fetch(`/api/stocks/${id}`, { method: 'DELETE' });
+            if (response.ok) {
+                showToast('success', 'Stock deleted successfully');
+                fetchStocks();
+            } else {
+                const data = await response.json();
+                throw new Error(data.error);
+            }
+        } catch (error: any) {
+            showToast('error', error.message);
+        }
+    };
 
     const fetchTransactions = async () => {
         try {
@@ -608,6 +671,196 @@ function TransactionsContent() {
                     transaction={editingTransaction}
                     initialType={initialType && ['income', 'expense', 'investment'].includes(initialType) ? initialType : undefined}
                 />
+
+                {/* Stock Form */}
+                <StockForm
+                    isOpen={isStockFormOpen}
+                    onClose={() => {
+                        setIsStockFormOpen(false);
+                        setEditingStock(null);
+                    }}
+                    onSuccess={() => {
+                        setStockPage(1);
+                        fetchStocks();
+                    }}
+                    stock={editingStock}
+                />
+
+                {/* Stock History Section */}
+                <div className="mt-12 glass-card overflow-hidden">
+                    <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <LineChart className="text-blue-500 animate-pulse" size={24} />
+                            <div>
+                                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Stock Investments</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Manage your equity purchases and sales</p>
+                            </div>
+                        </div>
+                        <Button
+                            onClick={() => {
+                                setEditingStock(null);
+                                setIsStockFormOpen(true);
+                            }}
+                            icon={<Plus size={18} />}
+                            className="rounded-2xl shadow-lg shadow-blue-500/20"
+                        >
+                            Add Stock
+                        </Button>
+                    </div>
+
+                    {/* Stock Filters Toolbar */}
+                    <div className="p-4 bg-gray-50/30 dark:bg-white/5 border-b border-gray-100 dark:border-white/5 flex flex-col sm:flex-row gap-4 items-center">
+                        <div className="relative flex-1 max-w-sm w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+                            <Input
+                                value={stockFilters.search}
+                                onChange={(e) => setStockFilters(prev => ({ ...prev, search: e.target.value }))}
+                                placeholder="Search symbol or name..."
+                                className="pl-10 h-11 rounded-2xl bg-white dark:bg-gray-800 border-gray-200 dark:border-white/10"
+                            />
+                        </div>
+                        <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 scrollbar-hide">
+                            <span className="text-sm font-semibold text-gray-500 dark:text-gray-400 whitespace-nowrap">Status:</span>
+                            <div className="flex bg-gray-100 dark:bg-gray-800 p-1 rounded-2xl">
+                                {['all', 'buy', 'sell'].map((type) => (
+                                    <button
+                                        key={type}
+                                        onClick={() => setStockFilters(prev => ({ ...prev, type }))}
+                                        className={`px-5 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${stockFilters.type === type
+                                            ? 'bg-white dark:bg-gray-700 text-blue-600 dark:text-blue-400 shadow-sm'
+                                            : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                                            }`}
+                                    >
+                                        {type}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="overflow-x-auto">
+                        <table className="w-full">
+                            <thead>
+                                <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                                    <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider w-12">#</th>
+                                    <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Date</th>
+                                    <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Stock Name</th>
+                                    <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Qty</th>
+                                    <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Status</th>
+                                    <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Buy Price</th>
+                                    <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Sell Price</th>
+                                    <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
+                                {stocksLoading ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-12 text-center text-gray-500">Loading stocks...</td>
+                                    </tr>
+                                ) : stocks.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={8} className="py-12 text-center text-gray-500">No stock transactions found</td>
+                                    </tr>
+                                ) : (
+                                    stocks.map((stock, idx) => (
+                                        <tr key={stock.id} className="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                                            <td className="py-4 px-6 text-sm text-gray-400">{(idx + 1).toString().padStart(2, '0')}</td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-white font-medium">
+                                                    <Calendar size={14} className="text-gray-400" />
+                                                    {formatDate(stock.date || stock.createdAt)}
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-gray-900 dark:text-white">{stock.name}</span>
+                                                </div>
+                                            </td>
+                                            <td className="py-4 px-6 text-sm text-gray-900 dark:text-white font-semibold">{stock.quantity}</td>
+                                            <td className="py-4 px-6 text-center">
+                                                <Badge variant={stock.type === 'BUY' ? 'income' : 'expense'}>
+                                                    {stock.type}
+                                                </Badge>
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                                {stock.type === 'BUY' ? formatCurrency(stock.buyPrice) : '-'}
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-bold text-rose-600 dark:text-rose-400">
+                                                {(stock.type === 'SELL' && stock.sellPrice) ? formatCurrency(stock.sellPrice) : '-'}
+                                            </td>
+                                            <td className="py-4 px-6 text-right">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        onClick={() => {
+                                                            setEditingStock(stock);
+                                                            setIsStockFormOpen(true);
+                                                        }}
+                                                        className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-gray-400 hover:text-violet-600 opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <Pencil size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleStockDelete(stock.id)}
+                                                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Stock Pagination */}
+                    {totalStockPages > 0 && (
+                        <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 gap-4">
+                            <div className="text-sm text-gray-500 dark:text-gray-400">
+                                Showing <span className="font-semibold text-gray-900 dark:text-white">{(stockPage - 1) * 5 + 1}</span> to{' '}
+                                <span className="font-semibold text-gray-900 dark:text-white">{Math.min(stockPage * 5, totalStockItems)}</span> of{' '}
+                                <span className="font-semibold text-gray-900 dark:text-white">{totalStockItems}</span> results
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setStockPage(prev => Math.max(prev - 1, 1))}
+                                    disabled={stockPage === 1}
+                                    className="rounded-xl px-3"
+                                >
+                                    <ChevronLeft size={16} className="mr-1" />
+                                    Previous
+                                </Button>
+                                <div className="flex items-center gap-1 mx-2">
+                                    {Array.from({ length: totalStockPages }, (_, i) => i + 1).map((page) => (
+                                        <button
+                                            key={page}
+                                            onClick={() => setStockPage(page)}
+                                            className={`w-8 h-8 rounded-lg text-sm font-medium transition-all ${stockPage === page
+                                                ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/30'
+                                                : 'text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                                }`}
+                                        >
+                                            {page}
+                                        </button>
+                                    ))}
+                                </div>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setStockPage(prev => Math.min(prev + 1, totalStockPages))}
+                                    disabled={stockPage === totalStockPages}
+                                    className="rounded-xl px-3"
+                                >
+                                    Next
+                                    <ChevronRight size={16} className="ml-1" />
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </div>
 
                 {/* Terminate Investment Modal */}
                 {terminateModalOpen && terminatingTransaction && (

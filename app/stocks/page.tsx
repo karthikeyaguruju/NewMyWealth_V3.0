@@ -26,13 +26,54 @@ export default function StocksPage() {
             setLoading(true);
             const response = await fetch('/api/stocks');
             const data = await response.json();
-            setStocks(data.stocks || []);
+            processAndSetStocks(data.stocks || []);
         } catch (error) {
             console.error('Failed to fetch stocks:', error);
             showToast('error', 'Failed to fetch stocks');
         } finally {
             setLoading(false);
         }
+    };
+
+    const processAndSetStocks = (rawStocks: any[]) => {
+        // Group by symbol and calculate weighted average
+        const grouped = rawStocks.reduce((acc: any, stock: any) => {
+            const symbol = stock.symbol.toUpperCase();
+            if (!acc[symbol]) {
+                acc[symbol] = {
+                    ...stock,
+                    quantity: 0,
+                    totalInvested: 0,
+                    currentValue: 0
+                };
+            }
+
+            if (stock.type === 'BUY') {
+                acc[symbol].quantity += stock.quantity;
+                acc[symbol].totalInvested += (stock.quantity * stock.buyPrice);
+                if (stock.currentPrice) {
+                    acc[symbol].currentValue += (stock.quantity * stock.currentPrice);
+                }
+            } else {
+                acc[symbol].quantity -= stock.quantity;
+                // For sells, we reduce invested amount proportionally based on average cost
+                const avgCost = acc[symbol].totalInvested / (acc[symbol].quantity + stock.quantity);
+                acc[symbol].totalInvested -= (stock.quantity * avgCost);
+                if (stock.currentPrice) {
+                    acc[symbol].currentValue -= (stock.quantity * stock.currentPrice);
+                }
+            }
+
+            // Recalculate average price
+            acc[symbol].buyPrice = acc[symbol].quantity > 0
+                ? acc[symbol].totalInvested / acc[symbol].quantity
+                : 0;
+
+            return acc;
+        }, {});
+
+        const processedStocks = Object.values(grouped).filter((s: any) => s.quantity > 0);
+        setStocks(processedStocks);
     };
 
     const refreshPrices = async () => {
@@ -50,7 +91,7 @@ export default function StocksPage() {
                 throw new Error(data.error || 'Failed to refresh prices');
             }
 
-            setStocks(data.stocks || []);
+            processAndSetStocks(data.stocks || []);
             showToast('success', `Live prices updated for ${data.pricesUpdated} stocks!`);
         } catch (error: any) {
             console.error('Failed to refresh prices:', error);
@@ -60,15 +101,18 @@ export default function StocksPage() {
         }
     };
 
-    const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this stock?')) return;
+    const handleDelete = async (id: string, symbol: string) => {
+        if (!confirm(`Are you sure you want to delete all transactions for ${symbol}?`)) return;
         try {
-            const response = await fetch(`/api/stocks/${id}`, { method: 'DELETE' });
+            // Need a new endpoint or multiple deletes to handle this
+            // For now, let's delete the consolidated entries by symbol
+            const response = await fetch(`/api/stocks/symbol/${symbol}`, { method: 'DELETE' });
             if (!response.ok) throw new Error('Failed to delete');
-            showToast('success', 'Stock deleted successfully');
+            showToast('success', `${symbol} entries deleted successfully`);
             fetchStocks();
         } catch (error) {
-            showToast('error', 'Failed to delete stock');
+            console.error('Delete error:', error);
+            showToast('error', 'Failed to delete stock entries');
         }
     };
 
@@ -98,9 +142,9 @@ export default function StocksPage() {
                 {/* Header Section */}
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
-                        <LineChart className="text-blue-500 animate-pulse" size={28} />
+                        <LineChart className="text-blue-500 animate-pulse" size={30} />
                         <div>
-                            <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Stocks Portfolio</h1>
+                            <h1 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Stocks Portfolio</h1>
                             <p className="text-gray-500 dark:text-gray-400 font-medium">Manage and track your equity investments</p>
                         </div>
                     </div>
@@ -110,10 +154,11 @@ export default function StocksPage() {
                             setIsFormOpen(true);
                         }}
                         size="lg"
-                        className="rounded-2xl shadow-lg shadow-blue-600/20"
+                        className="rounded-2xl shadow-lg shadow-blue-600/20 md:px-6"
                         icon={<Plus size={20} />}
                     >
-                        Add New Stock
+                        <span className="hidden sm:inline">Add New Stock</span>
+                        <span className="sm:hidden">Add</span>
                     </Button>
                 </div>
 

@@ -20,7 +20,7 @@ interface Stock {
 interface StockTableProps {
     stocks: Stock[];
     onEdit: (stock: Stock) => void;
-    onDelete: (id: string) => void;
+    onDelete: (id: string, symbol: string) => void;
     onRefresh?: () => void;
     loading?: boolean;
     refreshing?: boolean;
@@ -148,7 +148,7 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                                             <Pencil size={16} />
                                         </button>
                                         <button
-                                            onClick={() => onDelete(stock.id)}
+                                            onClick={() => onDelete(stock.id, stock.symbol)}
                                             className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100"
                                             title="Delete"
                                         >

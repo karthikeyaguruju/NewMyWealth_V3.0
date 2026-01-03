@@ -21,12 +21,65 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
 
-        const stocks = await prisma.stock.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-        });
+        const searchParams = request.nextUrl.searchParams;
+        const page = searchParams.get('page');
+        const limit = parseInt(searchParams.get('limit') || '10');
+        const search = searchParams.get('search');
+        const type = searchParams.get('type');
 
-        return NextResponse.json({ stocks }, { status: 200 });
+        // Build where clause
+        const where: any = { userId };
+
+        if (search) {
+            where.OR = [
+                { symbol: { contains: search, mode: 'insensitive' } },
+                { name: { contains: search, mode: 'insensitive' } },
+            ];
+        }
+
+        if (type && type !== 'all') {
+            where.type = type.toUpperCase();
+        }
+
+        let stocks;
+        let total = 0;
+        let pages = 1;
+
+        if (page) {
+            const pageNum = parseInt(page);
+            const skip = (pageNum - 1) * limit;
+
+            const [pagedStocks, count] = await Promise.all([
+                prisma.stock.findMany({
+                    where,
+                    orderBy: { createdAt: 'desc' },
+                    skip,
+                    take: limit,
+                }),
+                prisma.stock.count({
+                    where,
+                })
+            ]);
+            stocks = pagedStocks;
+            total = count;
+            pages = Math.ceil(total / limit);
+        } else {
+            stocks = await prisma.stock.findMany({
+                where,
+                orderBy: { createdAt: 'desc' },
+            });
+            total = stocks.length;
+        }
+
+        return NextResponse.json({
+            stocks,
+            pagination: {
+                total,
+                pages,
+                currentPage: page ? parseInt(page) : 1,
+                limit
+            }
+        }, { status: 200 });
     } catch (error) {
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
@@ -41,50 +94,13 @@ export async function POST(request: NextRequest) {
 
         const body = await request.json();
         const validatedData = stockSchema.parse(body);
+        const { date, ...dataWithoutDate } = validatedData;
 
-        // Check if stock with same symbol already exists for this user
-        const existingStock = await prisma.stock.findFirst({
-            where: {
-                userId,
-                symbol: validatedData.symbol.toUpperCase(),
-            },
-        });
-
-        if (existingStock) {
-            // Calculate weighted average buy price
-            // Formula: (oldQty * oldPrice + newQty * newPrice) / (oldQty + newQty)
-            const oldQty = existingStock.quantity;
-            const oldPrice = existingStock.buyPrice;
-            const newQty = validatedData.quantity;
-            const newPrice = validatedData.buyPrice;
-
-            const totalQty = oldQty + newQty;
-            const totalInvested = (oldQty * oldPrice) + (newQty * newPrice);
-            const averagePrice = totalInvested / totalQty;
-
-            // Update the existing stock entry
-            const updatedStock = await prisma.stock.update({
-                where: { id: existingStock.id },
-                data: {
-                    quantity: totalQty,
-                    buyPrice: averagePrice,
-                    totalValue: totalInvested,
-                    // Keep the name updated if provided
-                    name: validatedData.name || existingStock.name,
-                },
-            });
-
-            return NextResponse.json({
-                stock: updatedStock,
-                message: `Stock averaged: ${totalQty} shares at ₹${averagePrice.toFixed(2)} average price`,
-                averaged: true
-            }, { status: 200 });
-        }
-
-        // Create new stock entry if symbol doesn't exist
+        // Save as a new transaction record
         const stock = await prisma.stock.create({
             data: {
-                ...validatedData,
+                ...dataWithoutDate,
+                date: date ? new Date(date) : new Date(),
                 symbol: validatedData.symbol.toUpperCase(),
                 userId,
                 totalValue: validatedData.quantity * validatedData.buyPrice,

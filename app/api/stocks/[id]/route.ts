@@ -26,11 +26,13 @@ export async function PUT(
 
         const body = await request.json();
         const validatedData = stockSchema.parse(body);
+        const { date, ...dataWithoutDate } = validatedData;
 
         const stock = await prisma.stock.update({
             where: { id: params.id, userId },
             data: {
-                ...validatedData,
+                ...dataWithoutDate,
+                date: date ? new Date(date) : undefined,
                 totalValue: validatedData.quantity * validatedData.buyPrice,
             },
         });

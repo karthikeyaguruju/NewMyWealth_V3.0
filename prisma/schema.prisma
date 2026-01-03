@@ -29,6 +29,7 @@ model Stock {
   sellPrice   Float?   // Last selling price (if applicable)
   currentPrice Float?  // Current market price (for valuation)
   type        String   // BUY, SELL
+  date        DateTime? @default(now())
   totalValue  Float?   // Derived or stored: quantity * bugPrice/currentPrice
   userId      String   @db.ObjectId
   user        User     @relation(fields: [userId], references: [id])

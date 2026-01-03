@@ -24,6 +24,7 @@ export function StockForm({ isOpen, onClose, onSuccess, stock }: StockFormProps)
         buyPrice: '',
         sellPrice: '',
         type: 'BUY',
+        date: new Date().toISOString().split('T')[0],
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -37,6 +38,7 @@ export function StockForm({ isOpen, onClose, onSuccess, stock }: StockFormProps)
                 buyPrice: stock.buyPrice.toString(),
                 sellPrice: stock.sellPrice?.toString() || '',
                 type: stock.type,
+                date: stock.date ? new Date(stock.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
             });
         }
     }, [stock]);
@@ -101,6 +103,7 @@ export function StockForm({ isOpen, onClose, onSuccess, stock }: StockFormProps)
             buyPrice: '',
             sellPrice: '',
             type: 'BUY',
+            date: new Date().toISOString().split('T')[0],
         });
     };
 
@@ -130,18 +133,19 @@ export function StockForm({ isOpen, onClose, onSuccess, stock }: StockFormProps)
                 )}
 
                 <div className="grid grid-cols-2 gap-4">
-                    <Input
-                        label="Stock Symbol"
-                        value={formData.symbol}
-                        onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
-                        placeholder="e.g. AAPL"
-                        required
-                    />
+
                     <Input
                         label="Stock Name"
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        placeholder="e.g. Apple Inc."
+                        placeholder="Company Name"
+                        required
+                    />
+                    <Input
+                        label="Stock Symbol"
+                        value={formData.symbol}
+                        onChange={(e) => setFormData({ ...formData, symbol: e.target.value.toUpperCase() })}
+                        placeholder="Stock Symbol"
                         required
                     />
                 </div>
@@ -157,18 +161,17 @@ export function StockForm({ isOpen, onClose, onSuccess, stock }: StockFormProps)
                         min="0.01"
                         step="0.01"
                     />
-                    <Select
-                        label="Transaction Type"
-                        value={formData.type}
-                        onChange={(value) => setFormData({ ...formData, type: value })}
-                        options={[
-                            { value: 'BUY', label: 'Buy' },
-                            { value: 'SELL', label: 'Sell' },
-                        ]}
+                    <Input
+                        label="Date"
+                        type="date"
+                        value={formData.date}
+                        onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                        required
                     />
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
+
                     <Input
                         label="Buy Price"
                         type="number"
@@ -185,6 +188,19 @@ export function StockForm({ isOpen, onClose, onSuccess, stock }: StockFormProps)
                         onChange={(e) => setFormData({ ...formData, sellPrice: e.target.value })}
                         placeholder="0.00"
                         leftIcon={<span className="text-gray-500">₹</span>}
+                    />
+                </div>
+
+                <div className="grid grid-cols-1 gap-4">
+
+                    <Select
+                        label="Transaction Type"
+                        value={formData.type}
+                        onChange={(value) => setFormData({ ...formData, type: value })}
+                        options={[
+                            { value: 'BUY', label: 'Buy' },
+                            { value: 'SELL', label: 'Sell' },
+                        ]}
                     />
                 </div>
 
