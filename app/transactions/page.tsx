@@ -4,11 +4,14 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { DashboardLayout } from '@/components/Layout/DashboardLayout';
 import { TransactionForm } from '@/components/TransactionForm';
 import { Button } from '@/components/ui/Button';
-import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
-import { Plus, Pencil, Trash2, Search, Filter, X, Calendar, ChevronLeft, ChevronRight, CheckCircle, XCircle, BanknoteIcon } from 'lucide-react';
+import {
+    Plus, Pencil, Trash2, Search, Filter, X, Calendar, ChevronLeft, ChevronRight,
+    CheckCircle, XCircle, BanknoteIcon, ArrowUpRight, ArrowDownRight,
+    TrendingUp, Receipt, LayoutGrid
+} from 'lucide-react';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
@@ -62,7 +65,7 @@ function TransactionsContent() {
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [totalItems, setTotalItems] = useState(0);
-    const ITEMS_PER_PAGE = 10;
+    const ITEMS_PER_PAGE = 5;
 
     // Handle auto-opening form if type is provided in URL
     useEffect(() => {
@@ -108,6 +111,7 @@ function TransactionsContent() {
                 setTotalPages(data.pagination.pages);
                 setTotalItems(data.pagination.total);
             }
+
         } catch (error) {
             console.error('Failed to fetch transactions:', error);
             showToast('error', 'Failed to fetch transactions');
@@ -239,94 +243,110 @@ function TransactionsContent() {
 
     const currentSortValue = `${filters.sortBy}-${filters.order}`;
 
+    // Quick filter buttons
+    const quickFilters = [
+        { type: '', label: 'All', icon: LayoutGrid },
+        { type: 'income', label: 'Income', icon: ArrowUpRight },
+        { type: 'expense', label: 'Expense', icon: ArrowDownRight },
+        { type: 'investment', label: 'Investment', icon: TrendingUp },
+    ];
+
     return (
         <DashboardLayout>
-            <div className="space-y-6">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
-                            Transactions
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 mt-1">
-                            Manage your financial transactions
-                        </p>
+            <div className="space-y-8 max-w-7xl mx-auto pb-12">
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl text-white shadow-xl shadow-violet-500/20">
+                            <Receipt size={28} />
+                        </div>
+                        <div>
+                            <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight">Transactions</h1>
+                            <p className="text-gray-500 dark:text-gray-400 font-medium">Track and manage all your financial activities</p>
+                        </div>
                     </div>
                     <Button
                         onClick={() => {
-                            setEditingTransaction(undefined); // Clear any previous edit data
+                            setEditingTransaction(undefined);
                             setIsFormOpen(true);
                         }}
-                        className="w-full sm:w-auto"
+                        size="lg"
+                        className="rounded-2xl shadow-lg shadow-primary-600/20"
                         icon={<Plus size={20} />}
                     >
-                        <span className="hidden sm:inline">Add Transaction</span>
-                        <span className="sm:hidden">Add New</span>
+                        Add Transaction
                     </Button>
                 </div>
 
-                {/* Toolbar */}
-                <div className="flex flex-col md:flex-row gap-4 items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                    <div className="w-full md:flex-1">
-                        <Input
-                            placeholder="Search by description or category..."
-                            leftIcon={<Search size={18} />}
-                            value={filters.description}
-                            onChange={(e) => {
-                                setFilters(prev => ({ ...prev, description: e.target.value }));
-                                setCurrentPage(1);
-                            }}
-                            className="w-full"
-                        />
-                    </div>
-                    <div className="flex w-full md:w-auto gap-3">
-                        <Button
-                            variant="outline"
-                            onClick={() => setShowFilters(!showFilters)}
-                            icon={<Filter size={18} />}
-                            className={showFilters ? 'bg-gray-100 dark:bg-gray-700' : ''}
-                        >
-                            Filters
-                        </Button>
-                        <div className="w-48">
-                            <Select
-                                value={currentSortValue}
-                                onChange={handleSortChange}
-                                options={sortOptions}
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                {/* Filter Panel */}
-                {showFilters && (
-                    <Card className="animate-in fade-in slide-in-from-top-4 duration-200">
-                        <div className="space-y-4">
-                            <div className="flex items-center justify-between">
-                                <h3 className="font-semibold text-gray-900 dark:text-white">Filter Options</h3>
-                                <Button variant="ghost" size="sm" onClick={clearFilters} icon={<X size={16} />}>
-                                    Clear Filters
-                                </Button>
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                <Select
-                                    label="Type"
-                                    value={filters.type}
-                                    onChange={(val) => {
-                                        setFilters(prev => ({ ...prev, type: val }));
+                {/* Quick Filters & Search Toolbar */}
+                <div className="glass-card p-6 overflow-visible">
+                    <div className="flex flex-col lg:flex-row gap-6">
+                        {/* Quick Filter Buttons */}
+                        <div className="flex flex-wrap gap-2">
+                            {quickFilters.map((qf) => (
+                                <button
+                                    key={qf.type}
+                                    onClick={() => {
+                                        setFilters(prev => ({ ...prev, type: qf.type }));
                                         setCurrentPage(1);
                                     }}
-                                    options={[
-                                        { value: 'all', label: 'All Types' },
-                                        { value: 'income', label: 'Income' },
-                                        { value: 'expense', label: 'Expense' },
-                                        { value: 'investment', label: 'Investment' },
-                                    ]}
-                                    placeholder="All Types"
+                                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200
+                                        ${filters.type === qf.type
+                                            ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20'
+                                            : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'
+                                        }`}
+                                >
+                                    <qf.icon size={16} />
+                                    {qf.label}
+                                </button>
+                            ))}
+                        </div>
+
+                        {/* Search & Sort */}
+                        <div className="flex flex-1 gap-3">
+                            <div className="flex-1">
+                                <Input
+                                    placeholder="Search transactions..."
+                                    leftIcon={<Search size={18} />}
+                                    value={filters.description}
+                                    onChange={(e) => {
+                                        setFilters(prev => ({ ...prev, description: e.target.value }));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="w-full"
                                 />
+                            </div>
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowFilters(!showFilters)}
+                                icon={<Filter size={18} />}
+                                className={`${showFilters ? 'bg-violet-100 dark:bg-violet-900/30 border-violet-300 dark:border-violet-600' : ''}`}
+                            >
+                                <span className="hidden sm:inline">Filters</span>
+                            </Button>
+                            <div className="w-48 hidden md:block">
+                                <Select
+                                    value={currentSortValue}
+                                    onChange={handleSortChange}
+                                    options={sortOptions}
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Advanced Filter Panel */}
+                    {showFilters && (
+                        <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700 transition-all duration-200">
+                            <div className="flex items-center justify-between mb-4">
+                                <h3 className="font-semibold text-gray-900 dark:text-white">Advanced Filters</h3>
+                                <Button variant="ghost" size="sm" onClick={clearFilters} icon={<X size={16} />}>
+                                    Clear All
+                                </Button>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                                 <Input
                                     label="Category"
-                                    placeholder="All Categories"
+                                    placeholder="Filter by category"
                                     value={filters.category}
                                     onChange={(e) => {
                                         setFilters(prev => ({ ...prev, category: e.target.value }));
@@ -337,7 +357,7 @@ function TransactionsContent() {
                                     <Input
                                         label="Min Amount"
                                         type="number"
-                                        placeholder="0.00"
+                                        placeholder="₹0"
                                         value={filters.minAmount}
                                         onChange={(e) => {
                                             setFilters(prev => ({ ...prev, minAmount: e.target.value }));
@@ -347,7 +367,7 @@ function TransactionsContent() {
                                     <Input
                                         label="Max Amount"
                                         type="number"
-                                        placeholder="∞"
+                                        placeholder="₹∞"
                                         value={filters.maxAmount}
                                         onChange={(e) => {
                                             setFilters(prev => ({ ...prev, maxAmount: e.target.value }));
@@ -356,7 +376,7 @@ function TransactionsContent() {
                                     />
                                 </div>
                                 <Input
-                                    label="Date From"
+                                    label="From Date"
                                     type="date"
                                     value={filters.startDate}
                                     onChange={(e) => {
@@ -365,7 +385,7 @@ function TransactionsContent() {
                                     }}
                                 />
                                 <Input
-                                    label="Date To"
+                                    label="To Date"
                                     type="date"
                                     value={filters.endDate}
                                     onChange={(e) => {
@@ -375,26 +395,38 @@ function TransactionsContent() {
                                 />
                             </div>
                         </div>
-                    </Card>
-                )}
+                    )}
+                </div>
 
-                {/* Transactions List */}
-                <Card className="overflow-hidden">
+                {/* Transactions Table */}
+                <div className="glass-card overflow-hidden">
+                    <div className="p-6 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+                        <div>
+                            <h3 className="text-xl font-bold text-gray-900 dark:text-white">Transaction History</h3>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                                {totalItems} total transactions
+                            </p>
+                        </div>
+                    </div>
+
                     {loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+                        <div className="flex items-center justify-center py-16">
+                            <div className="flex flex-col items-center gap-4">
+                                <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-violet-200 border-t-violet-600"></div>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Loading transactions...</p>
+                            </div>
                         </div>
                     ) : transactions.length === 0 ? (
-                        <div className="text-center py-12">
-                            <div className="bg-gray-50 dark:bg-gray-800/50 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <Search className="text-gray-400" size={24} />
+                        <div className="text-center py-16">
+                            <div className="bg-gradient-to-br from-violet-100 to-purple-100 dark:from-violet-900/30 dark:to-purple-900/30 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <Receipt className="text-violet-500" size={32} />
                             </div>
-                            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No transactions found</h3>
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">
-                                Try adjusting your filters or add a new transaction.
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No transactions found</h3>
+                            <p className="text-gray-500 dark:text-gray-400 mb-6 max-w-sm mx-auto">
+                                Try adjusting your filters or add your first transaction to get started.
                             </p>
                             <Button icon={<Plus size={20} />} onClick={() => setIsFormOpen(true)}>
-                                Add Transaction
+                                Add Your First Transaction
                             </Button>
                         </div>
                     ) : (
@@ -403,23 +435,27 @@ function TransactionsContent() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
-                                            <th className="text-left py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Date</th>
-                                            <th className="text-left py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Type</th>
-                                            <th className="text-left py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Category</th>
-                                            <th className="text-left py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Description</th>
-                                            <th className="text-center py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Status</th>
-                                            <th className="text-right py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Amount</th>
-                                            <th className="text-right py-4 px-6 font-medium text-gray-500 dark:text-gray-400 text-sm">Actions</th>
+                                            <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider w-12">#</th>
+                                            <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Date</th>
+                                            <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Type</th>
+                                            <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Category</th>
+                                            <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Description</th>
+                                            <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Status</th>
+                                            <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Amount</th>
+                                            <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                                        {transactions.map((transaction) => (
+                                        {transactions.map((transaction, idx) => (
                                             <tr
                                                 key={transaction.id}
                                                 className="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
-                                                <td className="py-4 px-6 text-sm text-gray-900 dark:text-white">
-                                                    <div className="flex items-center gap-2">
+                                                <td className="py-4 px-6 text-sm text-gray-400 font-medium">
+                                                    {((currentPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}
+                                                </td>
+                                                <td className="py-4 px-6">
+                                                    <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-white font-medium">
                                                         <Calendar size={14} className="text-gray-400" />
                                                         {formatDate(transaction.date)}
                                                     </div>
@@ -429,14 +465,15 @@ function TransactionsContent() {
                                                         {transaction.type}
                                                     </Badge>
                                                 </td>
-                                                <td className="py-4 px-6 text-sm font-medium text-gray-900 dark:text-white">
-                                                    {transaction.category}
+                                                <td className="py-4 px-6">
+                                                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                                                        {transaction.category}
+                                                    </span>
                                                 </td>
                                                 <td className="py-4 px-6 text-sm text-gray-500 dark:text-gray-400 max-w-xs truncate">
                                                     {transaction.notes || '-'}
                                                 </td>
                                                 <td className="py-4 px-6 text-center">
-                                                    {/* Show status badge based on transaction type */}
                                                     {transaction.type === 'investment' ? (
                                                         transaction.status === 'terminated' ? (
                                                             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300">
@@ -444,31 +481,38 @@ function TransactionsContent() {
                                                                 Terminated
                                                             </span>
                                                         ) : (
-                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                                                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                                                                 <CheckCircle size={12} />
                                                                 Active
                                                             </span>
                                                         )
                                                     ) : transaction.type === 'income' ? (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
-                                                            <CheckCircle size={12} />
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                                                            <ArrowUpRight size={12} />
                                                             Credit
                                                         </span>
                                                     ) : transaction.type === 'expense' ? (
-                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                                                            <XCircle size={12} />
+                                                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400">
+                                                            <ArrowDownRight size={12} />
                                                             Debit
                                                         </span>
                                                     ) : (
                                                         <span className="text-gray-400 text-xs">-</span>
                                                     )}
                                                 </td>
-                                                <td className="py-4 px-6 text-right text-sm font-semibold text-gray-900 dark:text-white">
-                                                    {formatCurrency(transaction.amount)}
+                                                <td className="py-4 px-6 text-right">
+                                                    <span className={`text-sm font-bold ${transaction.type === 'income'
+                                                        ? 'text-emerald-600 dark:text-emerald-400'
+                                                        : transaction.type === 'expense'
+                                                            ? 'text-rose-600 dark:text-rose-400'
+                                                            : 'text-blue-600 dark:text-blue-400'
+                                                        }`}>
+                                                        {transaction.type === 'income' ? '+' : transaction.type === 'expense' ? '-' : ''}
+                                                        {formatCurrency(transaction.amount)}
+                                                    </span>
                                                 </td>
                                                 <td className="py-4 px-6">
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        {/* Terminate button for Active FD/Bonds */}
+                                                    <div className="flex items-center justify-end gap-1">
                                                         {canTerminate(transaction) && (
                                                             <button
                                                                 onClick={() => openTerminateModal(transaction)}
@@ -480,14 +524,14 @@ function TransactionsContent() {
                                                         )}
                                                         <button
                                                             onClick={() => handleEdit(transaction)}
-                                                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors text-gray-500 hover:text-primary-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all text-gray-400 hover:text-violet-600 opacity-0 group-hover:opacity-100"
                                                             title="Edit"
                                                         >
                                                             <Pencil size={16} />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(transaction.id)}
-                                                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors text-gray-500 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                            className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100"
                                                             title="Delete"
                                                         >
                                                             <Trash2 size={16} />
@@ -500,10 +544,12 @@ function TransactionsContent() {
                                 </table>
                             </div>
 
-                            {/* Pagination Controls */}
-                            <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700">
+                            {/* Pagination */}
+                            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 dark:border-gray-700 gap-4">
                                 <div className="text-sm text-gray-500 dark:text-gray-400">
-                                    Showing <span className="font-medium">{transactions.length}</span> of <span className="font-medium">{totalItems}</span> results
+                                    Showing <span className="font-semibold text-gray-900 dark:text-white">{(currentPage - 1) * ITEMS_PER_PAGE + 1}</span> to{' '}
+                                    <span className="font-semibold text-gray-900 dark:text-white">{Math.min(currentPage * ITEMS_PER_PAGE, totalItems)}</span> of{' '}
+                                    <span className="font-semibold text-gray-900 dark:text-white">{totalItems}</span> results
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <Button
@@ -513,25 +559,48 @@ function TransactionsContent() {
                                         disabled={currentPage === 1}
                                         icon={<ChevronLeft size={16} />}
                                     >
-                                        Previous
+                                        <span className="hidden sm:inline">Previous</span>
                                     </Button>
-                                    <span className="text-sm font-medium text-gray-900 dark:text-white px-2">
-                                        Page {currentPage} of {totalPages}
-                                    </span>
+                                    <div className="flex items-center gap-1">
+                                        {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                                            let pageNum;
+                                            if (totalPages <= 5) {
+                                                pageNum = i + 1;
+                                            } else if (currentPage <= 3) {
+                                                pageNum = i + 1;
+                                            } else if (currentPage >= totalPages - 2) {
+                                                pageNum = totalPages - 4 + i;
+                                            } else {
+                                                pageNum = currentPage - 2 + i;
+                                            }
+                                            return (
+                                                <button
+                                                    key={pageNum}
+                                                    onClick={() => setCurrentPage(pageNum)}
+                                                    className={`w-9 h-9 rounded-lg text-sm font-semibold transition-all ${currentPage === pageNum
+                                                        ? 'bg-violet-600 text-white shadow-lg shadow-violet-600/20'
+                                                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                                                        }`}
+                                                >
+                                                    {pageNum}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                     <Button
                                         variant="outline"
                                         size="sm"
                                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                                         disabled={currentPage === totalPages}
-                                        icon={<ChevronRight size={16} />}
                                     >
-                                        Next
+                                        <span className="hidden sm:inline">Next</span>
+                                        <ChevronRight size={16} />
                                     </Button>
                                 </div>
                             </div>
                         </>
                     )}
-                </Card>
+                </div>
 
                 <TransactionForm
                     isOpen={isFormOpen}
@@ -544,18 +613,23 @@ function TransactionsContent() {
                 {/* Terminate Investment Modal */}
                 {terminateModalOpen && terminatingTransaction && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-700">
+                        <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-100 dark:border-gray-700 animate-in zoom-in-95 duration-200">
                             <div className="flex items-center justify-between mb-4">
-                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
-                                    Terminate Investment
-                                </h3>
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 rounded-xl">
+                                        <BanknoteIcon size={20} />
+                                    </div>
+                                    <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                                        Terminate Investment
+                                    </h3>
+                                </div>
                                 <button
                                     onClick={() => {
                                         setTerminateModalOpen(false);
                                         setTerminatingTransaction(null);
                                         setMaturityAmount('');
                                     }}
-                                    className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                    className="p-1.5 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                                 >
                                     <X size={20} />
                                 </button>
@@ -566,14 +640,14 @@ function TransactionsContent() {
                                     You are about to terminate your <strong className="text-gray-900 dark:text-white">{terminatingTransaction.category}</strong> investment.
                                 </p>
 
-                                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
+                                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-4 space-y-2">
                                     <div className="flex justify-between text-sm">
                                         <span className="text-gray-600 dark:text-gray-400">Original Amount:</span>
-                                        <span className="font-semibold text-gray-900 dark:text-white">
+                                        <span className="font-bold text-gray-900 dark:text-white">
                                             {formatCurrency(terminatingTransaction.amount)}
                                         </span>
                                     </div>
-                                    <div className="flex justify-between text-sm mt-2">
+                                    <div className="flex justify-between text-sm">
                                         <span className="text-gray-600 dark:text-gray-400">Investment Date:</span>
                                         <span className="text-gray-900 dark:text-white">
                                             {formatDate(terminatingTransaction.date)}
@@ -582,7 +656,7 @@ function TransactionsContent() {
                                 </div>
 
                                 <div>
-                                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">
                                         Maturity Amount (including interest)
                                     </label>
                                     <div className="relative">
@@ -591,13 +665,13 @@ function TransactionsContent() {
                                             type="number"
                                             value={maturityAmount}
                                             onChange={(e) => setMaturityAmount(e.target.value)}
-                                            className="w-full pl-8 pr-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+                                            className="w-full pl-8 pr-4 py-3 rounded-xl border bg-white dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                                             placeholder="Enter maturity amount"
                                             min="0"
                                             step="0.01"
                                         />
                                     </div>
-                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
                                         This amount will be added to your income as "Investment Returns"
                                     </p>
                                 </div>
@@ -615,7 +689,7 @@ function TransactionsContent() {
                                         Cancel
                                     </Button>
                                     <Button
-                                        className="flex-1 bg-orange-500 hover:bg-orange-600"
+                                        className="flex-1 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 border-none"
                                         onClick={handleTerminate}
                                         loading={terminateLoading}
                                     >
@@ -636,7 +710,10 @@ export default function TransactionsPage() {
         <Suspense fallback={
             <DashboardLayout>
                 <div className="flex items-center justify-center min-h-[60vh]">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-600"></div>
+                    <div className="flex flex-col items-center gap-4">
+                        <div className="animate-spin rounded-full h-10 w-10 border-[3px] border-violet-200 border-t-violet-600"></div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Loading...</p>
+                    </div>
                 </div>
             </DashboardLayout>
         }>

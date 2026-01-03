@@ -121,14 +121,14 @@ export default function StocksPage() {
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                    <Card className="p-6 bg-gradient-to-br from-blue-600 to-indigo-700 text-white border-none shadow-xl shadow-blue-600/20">
+                    <Card className="p-6 bg-white dark:bg-[#0a0f1d] border border-gray-200 dark:border-gray-700/50 shadow-sm">
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md">
+                            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-xl">
                                 <DollarSign size={24} />
                             </div>
                             <div>
-                                <p className="text-blue-100 text-xs font-bold uppercase tracking-wider">Total Invested</p>
-                                <h2 className="text-2xl font-black">₹{totalInvested.toLocaleString()}</h2>
+                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Total Invested</p>
+                                <h2 className="text-2xl font-black text-gray-900 dark:text-white">₹{totalInvested.toLocaleString()}</h2>
                             </div>
                         </div>
                     </Card>
@@ -145,17 +145,17 @@ export default function StocksPage() {
                         </div>
                     </Card>
 
-                    <Card className={`p-6 border-none shadow-xl ${isOverallProfit ? 'bg-gradient-to-br from-emerald-500 to-teal-600 shadow-emerald-500/20' : 'bg-gradient-to-br from-rose-500 to-orange-600 shadow-rose-500/20'} text-white`}>
+                    <Card className={`p-6 bg-white dark:bg-[#0a0f1d] shadow-sm ${isOverallProfit ? 'border border-emerald-300 dark:border-emerald-600/50' : 'border border-rose-300 dark:border-rose-600/50'}`}>
                         <div className="flex items-center gap-4">
-                            <div className="p-3 bg-white/10 rounded-xl backdrop-blur-md">
+                            <div className={`p-3 rounded-xl ${isOverallProfit ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400' : 'bg-rose-100 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400'}`}>
                                 {isOverallProfit ? <TrendingUp size={24} /> : <TrendingDown size={24} />}
                             </div>
                             <div>
-                                <p className="text-white/80 text-xs font-bold uppercase tracking-wider">Total P/L</p>
-                                <h2 className="text-2xl font-black">
+                                <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-wider">Total P/L</p>
+                                <h2 className={`text-2xl font-black ${isOverallProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                     {isOverallProfit ? '+' : ''}₹{totalProfitLoss.toLocaleString()}
                                 </h2>
-                                <p className="text-white/70 text-xs font-semibold">
+                                <p className={`text-xs font-semibold ${isOverallProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     {isOverallProfit ? '+' : ''}{profitLossPercent.toFixed(2)}%
                                 </p>
                             </div>

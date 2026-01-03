@@ -55,12 +55,12 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                 <thead>
                     <tr className="bg-gray-50/50 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700 font-bold">
                         <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider w-16">#</th>
-                        <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Stock</th>
-                        <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Qty</th>
-                        <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Type</th>
+                        <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Stock Name</th>
+                        <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Symbol</th>
+                        <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Qty</th>
                         <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Buy Price</th>
-                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">
-                            <div className="flex items-center justify-end gap-2">
+                        <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider whitespace-nowrap">
+                            <div className="flex items-center justify-center gap-2">
                                 Live Price
                                 {onRefresh && (
                                     <button
@@ -74,8 +74,9 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                                 )}
                             </div>
                         </th>
-                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">P/L</th>
-                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Total Value</th>
+                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider whitespace-nowrap min-w-[120px]">P/L</th>
+                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Invested Value</th>
+                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Current Value</th>
                         <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -96,23 +97,18 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                                     {(idx + 1).toString().padStart(2, '0')}
                                 </td>
                                 <td className="py-4 px-6">
-                                    <div className="flex flex-col">
-                                        <span className="font-bold text-gray-900 dark:text-white uppercase">{stock.symbol}</span>
-                                        <span className="text-xs text-gray-500 dark:text-gray-400">{stock.name}</span>
-                                    </div>
+                                    <span className="font-medium text-gray-900 dark:text-white">{stock.name}</span>
                                 </td>
-                                <td className="py-4 px-6 text-sm text-gray-900 dark:text-white font-semibold">
+                                <td className="py-4 px-6">
+                                    <span className="font-bold text-gray-700 dark:text-gray-300 uppercase text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded">{stock.symbol}</span>
+                                </td>
+                                <td className="py-4 px-6 text-center text-sm text-gray-900 dark:text-white font-semibold">
                                     {stock.quantity}
-                                </td>
-                                <td className="py-4 px-6 text-center">
-                                    <Badge variant={stock.type === 'BUY' ? 'income' : 'expense'}>
-                                        {stock.type}
-                                    </Badge>
                                 </td>
                                 <td className="py-4 px-6 text-right text-sm font-semibold text-gray-900 dark:text-white">
                                     {formatCurrency(stock.buyPrice)}
                                 </td>
-                                <td className="py-4 px-6 text-right text-sm font-semibold">
+                                <td className="py-4 px-6 text-center text-sm font-semibold whitespace-nowrap">
                                     {stock.currentPrice ? (
                                         <span className="text-blue-600 dark:text-blue-400">
                                             {formatCurrency(stock.currentPrice)}
@@ -121,20 +117,23 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                                         <span className="text-gray-400 text-xs">Not fetched</span>
                                     )}
                                 </td>
-                                <td className="py-4 px-6 text-right">
+                                <td className="py-4 px-6 text-right whitespace-nowrap min-w-[120px]">
                                     {stock.currentPrice ? (
                                         <div className="flex flex-col items-end">
                                             <span className={`text-sm font-bold flex items-center gap-1 ${isProfit ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
                                                 {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
-                                                {formatCurrency(Math.abs(profitLoss))}
+                                                {isProfit ? '+' : '-'}{formatCurrency(Math.abs(profitLoss))}
                                             </span>
                                             <span className={`text-xs ${isProfit ? 'text-emerald-500' : 'text-rose-500'}`}>
-                                                {isProfit ? '+' : ''}{profitLossPercent.toFixed(2)}%
+                                                ({isProfit ? '+' : ''}{profitLossPercent.toFixed(2)}%)
                                             </span>
                                         </div>
                                     ) : (
                                         <span className="text-gray-400 text-xs">-</span>
                                     )}
+                                </td>
+                                <td className="py-4 px-6 text-right text-sm font-semibold text-gray-600 dark:text-gray-300">
+                                    {formatCurrency(investedValue)}
                                 </td>
                                 <td className="py-4 px-6 text-right text-sm font-black text-blue-600 dark:text-blue-400">
                                     {formatCurrency(currentValue)}

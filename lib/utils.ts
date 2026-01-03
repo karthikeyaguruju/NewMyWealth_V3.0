@@ -10,15 +10,14 @@ export function formatCurrency(amount: number): string {
         style: 'currency',
         currency: 'INR',
         minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
+        maximumFractionDigits: 2,
     }).format(amount);
 }
 
 export function formatDate(dateString: string): string {
     const date = new Date(dateString);
-    return new Intl.DateTimeFormat('en-IN', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    }).format(date);
+    const day = date.getDate().toString().padStart(2, '0');
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
 }
