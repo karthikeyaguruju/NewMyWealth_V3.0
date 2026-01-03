@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
@@ -83,6 +83,14 @@ const settingsSubItems = [
 ];
 
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
+    return (
+        <Suspense fallback={<div className="w-72 hidden md:block bg-white dark:bg-[#0a0f1d]" />}>
+            <SidebarContent isOpen={isOpen} onClose={onClose} />
+        </Suspense>
+    );
+}
+
+function SidebarContent({ isOpen, onClose }: SidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
     const searchParams = useSearchParams();
