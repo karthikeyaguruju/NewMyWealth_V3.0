@@ -15,6 +15,8 @@ interface Stock {
     currentPrice?: number | null;
     type: string;
     totalValue?: number | null;
+    totalInvested?: number;
+    currentValue?: number;
 }
 
 interface StockTableProps {
@@ -58,7 +60,7 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                         <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Stock Name</th>
                         <th className="text-left py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Symbol</th>
                         <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Qty</th>
-                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Buy Price</th>
+                        <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Avg. Buy Price</th>
                         <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider whitespace-nowrap">
                             <div className="flex items-center justify-center gap-2">
                                 Live Price
@@ -82,8 +84,8 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                 </thead>
                 <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                     {stocks.map((stock, idx) => {
-                        const investedValue = stock.quantity * stock.buyPrice;
-                        const currentValue = stock.currentPrice ? stock.quantity * stock.currentPrice : investedValue;
+                        const investedValue = stock.totalInvested ?? (stock.quantity * stock.buyPrice);
+                        const currentValue = stock.currentValue ?? (stock.currentPrice ? stock.quantity * stock.currentPrice : investedValue);
                         const profitLoss = currentValue - investedValue;
                         const profitLossPercent = investedValue > 0 ? (profitLoss / investedValue) * 100 : 0;
                         const isProfit = profitLoss >= 0;
@@ -105,7 +107,7 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                                 <td className="py-4 px-6 text-center text-sm text-gray-900 dark:text-white font-semibold">
                                     {stock.quantity}
                                 </td>
-                                <td className="py-4 px-6 text-right text-sm font-semibold text-gray-900 dark:text-white">
+                                <td className="py-4 px-6 text-right text-sm font-semibold text-gray-900 dark:text-white" title={stock.buyPrice.toString()}>
                                     {formatCurrency(stock.buyPrice)}
                                 </td>
                                 <td className="py-4 px-6 text-center text-sm font-semibold whitespace-nowrap">

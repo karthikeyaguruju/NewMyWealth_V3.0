@@ -749,17 +749,18 @@ function TransactionsContent() {
                                     <th className="text-center py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Status</th>
                                     <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Buy Price</th>
                                     <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Sell Price</th>
+                                    <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Total Amount</th>
                                     <th className="text-right py-4 px-6 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                 {stocksLoading ? (
                                     <tr>
-                                        <td colSpan={8} className="py-12 text-center text-gray-500">Loading stocks...</td>
+                                        <td colSpan={9} className="py-12 text-center text-gray-500">Loading stocks...</td>
                                     </tr>
                                 ) : stocks.length === 0 ? (
                                     <tr>
-                                        <td colSpan={8} className="py-12 text-center text-gray-500">No stock transactions found</td>
+                                        <td colSpan={9} className="py-12 text-center text-gray-500">No stock transactions found</td>
                                     </tr>
                                 ) : (
                                     stocks.map((stock, idx) => (
@@ -782,11 +783,14 @@ function TransactionsContent() {
                                                     {stock.type}
                                                 </Badge>
                                             </td>
-                                            <td className="py-4 px-6 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                                            <td className="py-4 px-6 text-right font-semibold text-emerald-600 dark:text-emerald-400">
                                                 {stock.type === 'BUY' ? formatCurrency(stock.buyPrice) : '-'}
                                             </td>
-                                            <td className="py-4 px-6 text-right font-bold text-rose-600 dark:text-rose-400">
+                                            <td className="py-4 px-6 text-right font-semibold text-rose-600 dark:text-rose-400">
                                                 {(stock.type === 'SELL' && stock.sellPrice) ? formatCurrency(stock.sellPrice) : '-'}
+                                            </td>
+                                            <td className="py-4 px-6 text-right font-semibold text-blue-600 dark:text-blue-400">
+                                                {formatCurrency(stock.type === 'BUY' ? (stock.quantity * stock.buyPrice) : (stock.quantity * (stock.sellPrice || 0)))}
                                             </td>
                                             <td className="py-4 px-6 text-right">
                                                 <div className="flex items-center justify-end gap-1">
