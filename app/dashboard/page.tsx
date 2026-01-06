@@ -333,8 +333,8 @@ export default function DashboardPage() {
                                             </PieChart>
                                         </ResponsiveContainer>
                                         <div className="absolute top-[32%] left-1/2 -translate-x-1/2 text-center pointer-events-none">
-                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Total Income</p>
-                                            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">₹{metrics.totalIncome.toLocaleString()}</p>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">This Month</p>
+                                            <p className="text-xl font-black text-emerald-600 dark:text-emerald-400">₹{thisMonth.income.toLocaleString()}</p>
                                         </div>
                                     </div>
 
