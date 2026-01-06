@@ -1,26 +1,56 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-// This is the standard client for frontend and regular backend queries.
-// It respects Row-Level Security (RLS).
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+/**
+ * Lazy-initialized Supabase clients to avoid build-time errors
+ * when environment variables are not available.
+ */
+let supabaseClient: SupabaseClient | null = null;
+let serviceSupabaseClient: SupabaseClient | null = null;
 
 /**
- * Cached service role client for backend-only tasks that need to bypass RLS.
- * Uses singleton pattern for better performance.
+ * Get the standard Supabase client (respects RLS).
+ * Lazily initialized to work with Vercel builds.
  */
-let serviceSupabase: SupabaseClient | null = null;
+export const getSupabase = (): SupabaseClient => {
+    if (supabaseClient) return supabaseClient;
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+        throw new Error('Supabase URL or Anon Key is missing');
+    }
+
+    supabaseClient = createClient(supabaseUrl, supabaseAnonKey);
+    return supabaseClient;
+};
+
+/**
+ * Get the service role Supabase client (bypasses RLS).
+ * Only use on the server side.
+ */
 export const getServiceSupabase = (): SupabaseClient => {
-    if (serviceSupabase) return serviceSupabase;
+    if (serviceSupabaseClient) return serviceSupabaseClient;
 
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    if (!serviceRoleKey) {
+
+    if (!supabaseUrl || !serviceRoleKey) {
         throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing');
     }
-    serviceSupabase = createClient(supabaseUrl, serviceRoleKey);
-    return serviceSupabase;
+
+    serviceSupabaseClient = createClient(supabaseUrl, serviceRoleKey);
+    return serviceSupabaseClient;
 };
+
+// For backwards compatibility - lazy getter
+export const supabase = {
+    get auth() {
+        return getSupabase().auth;
+    },
+    from(table: string) {
+        return getSupabase().from(table);
+    }
+} as SupabaseClient;
+
 
