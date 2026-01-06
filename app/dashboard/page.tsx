@@ -30,6 +30,15 @@ import { FinancialInsights } from '@/components/Dashboard/FinancialInsights';
 import { PeriodicFinanceChart } from '@/components/Dashboard/PeriodicFinanceChart';
 
 interface AnalyticsData {
+    thisMonth: {
+        income: number;
+        expenses: number;
+        investments: number;
+        netSavings: number;
+        savingsRate: number;
+        incomeGrowth: number;
+        expenseGrowth: number;
+    };
     metrics: {
         totalIncome: number;
         totalExpenses: number;
@@ -118,57 +127,61 @@ export default function DashboardPage() {
         );
     }
 
-    const metrics = analytics?.metrics ?? {
-        totalIncome: 0,
-        totalExpenses: 0,
+    // Use THIS MONTH data for dashboard cards
+    const thisMonth = analytics?.thisMonth ?? {
+        income: 0,
+        expenses: 0,
+        investments: 0,
         netSavings: 0,
-        totalInvestments: 0,
-        thisMonthIncome: 0,
-        thisMonthExpenses: 0,
         savingsRate: 0,
         incomeGrowth: 0,
         expenseGrowth: 0,
-        investmentGrowth: 0,
     };
+
+    const currentMonthName = format(new Date(), 'MMMM yyyy');
 
     return (
         <DashboardLayout>
             <div className="max-w-7xl mx-auto space-y-8 pb-12">
                 <Greeting userName={user?.fullName} />
 
-                {/* Metrics Grid */}
+                {/* This Month's Summary */}
+                <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="info" className="text-sm font-semibold">{currentMonthName}</Badge>
+                </div>
+
+                {/* Metrics Grid - THIS MONTH DATA */}
                 <div className="flex overflow-x-auto md:grid md:grid-cols-2 lg:grid-cols-4 gap-6 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory">
                     <div className="min-w-[280px] snap-center">
                         <MetricCard
-                            title="Total Income"
-                            value={metrics.totalIncome}
+                            title="Income"
+                            value={thisMonth.income}
                             icon={DollarSign}
                             colorScheme="income"
-                            trend={metrics.incomeGrowth}
+                            trend={thisMonth.incomeGrowth}
                         />
                     </div>
                     <div className="min-w-[280px] snap-center">
                         <MetricCard
-                            title="Total Expenses"
-                            value={metrics.totalExpenses}
+                            title="Expenses"
+                            value={thisMonth.expenses}
                             icon={CreditCard}
                             colorScheme="expense"
-                            trend={metrics.expenseGrowth}
+                            trend={thisMonth.expenseGrowth}
                         />
                     </div>
                     <div className="min-w-[280px] snap-center">
                         <MetricCard
-                            title="Total Investments"
-                            value={metrics.totalInvestments}
+                            title="Investments"
+                            value={thisMonth.investments}
                             icon={TrendingUp}
                             colorScheme="investment"
-                            trend={metrics.investmentGrowth}
                         />
                     </div>
                     <div className="min-w-[280px] snap-center">
                         <MetricCard
-                            title="Net Balance"
-                            value={metrics.netSavings}
+                            title="Net Savings"
+                            value={thisMonth.netSavings}
                             icon={PiggyBank}
                             colorScheme="primary"
                         />
@@ -184,7 +197,7 @@ export default function DashboardPage() {
                     <FinancialInsights
                         expenseData={analytics.expenseBreakdown}
                         investmentData={analytics.investmentAllocation}
-                        savingsRate={metrics.savingsRate}
+                        savingsRate={thisMonth.savingsRate}
                     />
                     <MonthlyTrends data={analytics.monthlyData} />
                 </div>
