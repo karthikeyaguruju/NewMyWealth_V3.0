@@ -147,7 +147,7 @@ export default function DashboardPage() {
 
                 {/* This Month's Summary */}
                 <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="info" className="text-sm font-semibold">{currentMonthName}</Badge>
+                    <Badge variant="default" className="text-sm font-semibold">{currentMonthName}</Badge>
                 </div>
 
                 {/* Metrics Grid - THIS MONTH DATA */}
