@@ -13,8 +13,12 @@ import {
     CheckCircle, XCircle, BanknoteIcon, ArrowUpRight, ArrowDownRight,
     TrendingUp, Receipt, LayoutGrid, LineChart
 } from 'lucide-react';
+import { Modal } from '@/components/ui/Modal';
 import { StockForm } from '@/components/Stocks/StockForm';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import {
+    Info,
+} from 'lucide-react';
+import { formatCurrency, formatDate, cn } from '@/lib/utils';
 import { useToast } from '@/contexts/ToastContext';
 import { useActivityLog } from '@/hooks/useActivityLog';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -49,6 +53,7 @@ function TransactionsContent() {
     const [terminatingTransaction, setTerminatingTransaction] = useState<Transaction | null>(null);
     const [maturityAmount, setMaturityAmount] = useState('');
     const [terminateLoading, setTerminateLoading] = useState(false);
+    const [selectedDetailTransaction, setSelectedDetailTransaction] = useState<Transaction | null>(null);
 
     // Filter state
     const [filters, setFilters] = useState({
@@ -513,7 +518,12 @@ function TransactionsContent() {
                                                 className="group hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                                             >
                                                 <td className="py-4 px-6 text-sm text-gray-400 font-medium">
-                                                    {((currentPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}
+                                                    <button
+                                                        onClick={() => setSelectedDetailTransaction(transaction)}
+                                                        className="hover:text-violet-600 transition-colors bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-md font-bold text-xs border border-transparent hover:border-violet-300"
+                                                    >
+                                                        {((currentPage - 1) * ITEMS_PER_PAGE + idx + 1).toString().padStart(2, '0')}
+                                                    </button>
                                                 </td>
                                                 <td className="py-4 px-6">
                                                     <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-white font-medium">
@@ -670,6 +680,99 @@ function TransactionsContent() {
                     transaction={editingTransaction}
                     initialType={initialType && ['income', 'expense', 'investment'].includes(initialType) ? initialType : undefined}
                 />
+
+                {/* Transaction Detail Modal */}
+                <Modal
+                    isOpen={!!selectedDetailTransaction}
+                    onClose={() => setSelectedDetailTransaction(null)}
+                    title="Transaction Details"
+                    size="md"
+                >
+                    {selectedDetailTransaction && (
+                        <div className="space-y-6">
+                            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-gray-800">
+                                <div className="flex items-center gap-3">
+                                    <div className={cn(
+                                        "w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner",
+                                        selectedDetailTransaction.type === 'income' ? "bg-emerald-50 text-emerald-600" :
+                                            selectedDetailTransaction.type === 'expense' ? "bg-rose-50 text-rose-600" :
+                                                "bg-violet-50 text-violet-600"
+                                    )}>
+                                        {selectedDetailTransaction.type === 'income' ? <ArrowUpRight size={24} /> :
+                                            selectedDetailTransaction.type === 'expense' ? <ArrowDownRight size={24} /> :
+                                                <TrendingUp size={24} />}
+                                    </div>
+                                    <div>
+                                        <p className="text-2xl font-black text-gray-900 dark:text-white">
+                                            {formatCurrency(selectedDetailTransaction.amount)}
+                                        </p>
+                                        <Badge variant={selectedDetailTransaction.type as any}>{selectedDetailTransaction.type}</Badge>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Status</p>
+                                    <div className="flex items-center gap-1.5 mt-1 justify-end">
+                                        {selectedDetailTransaction.status === 'terminated' ? (
+                                            <>
+                                                <div className="w-2 h-2 rounded-full bg-gray-400" />
+                                                <span className="text-sm font-black text-gray-500 uppercase tracking-tight">Terminated</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                <span className="text-sm font-black text-emerald-600 uppercase tracking-tight">
+                                                    {selectedDetailTransaction.type === 'investment' ? 'Active' : 'Paid'}
+                                                </span>
+                                            </>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-6">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Date</p>
+                                    <div className="flex items-center gap-2 text-gray-900 dark:text-white font-bold">
+                                        <Calendar size={14} className="text-gray-400" />
+                                        {formatDate(selectedDetailTransaction.date)}
+                                    </div>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Category</p>
+                                    <p className="text-gray-900 dark:text-white font-bold">{selectedDetailTransaction.category}</p>
+                                </div>
+                            </div>
+
+                            <div className="space-y-1 bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-gray-100 dark:border-gray-700">
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Description</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed font-medium capitalize">
+                                    {selectedDetailTransaction.notes || "No description provided."}
+                                </p>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <Button
+                                    variant="outline"
+                                    fullWidth
+                                    onClick={() => {
+                                        handleEdit(selectedDetailTransaction);
+                                        setSelectedDetailTransaction(null);
+                                    }}
+                                    icon={<Pencil size={16} />}
+                                >
+                                    Edit Transaction
+                                </Button>
+                                <Button
+                                    variant="ghost"
+                                    className="text-gray-400 hover:text-gray-600"
+                                    onClick={() => setSelectedDetailTransaction(null)}
+                                >
+                                    Close
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+                </Modal>
 
                 {/* Stock Form */}
                 <StockForm

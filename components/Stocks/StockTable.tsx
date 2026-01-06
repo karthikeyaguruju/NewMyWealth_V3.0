@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Pencil, Trash2, TrendingUp, TrendingDown, Layers, RefreshCw, X, Calendar, User, Tag, IndianRupee, Activity, Briefcase } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/Badge';
 import { formatCurrency } from '@/lib/utils';
 import { Modal } from '@/components/ui/Modal';
@@ -221,7 +222,7 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                                 </div>
                                 <div className="flex flex-wrap gap-1.5">
                                     {detailStock.broker ? detailStock.broker.split(',').map((b, i) => (
-                                        <span key={i} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 italic">
+                                        <span key={i} className="text-[11px] font-bold px-2.5 py-1 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50">
                                             {b.trim()}
                                         </span>
                                     )) : (
@@ -251,22 +252,55 @@ export function StockTable({ stocks, onEdit, onDelete, onRefresh, loading, refre
                             </div>
                         </div>
 
-                        <div className="p-6 bg-primary-600 rounded-3xl text-white shadow-xl shadow-primary-600/20">
-                            <div className="flex justify-between items-end">
-                                <div>
-                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Current Valuation</p>
-                                    <p className="text-3xl font-black">
-                                        {formatCurrency(detailStock.currentValue ?? (detailStock.currentPrice ? detailStock.quantity * detailStock.currentPrice : (detailStock.quantity * detailStock.buyPrice)))}
-                                    </p>
+                        {(() => {
+                            const investedValue = detailStock.totalInvested ?? (detailStock.quantity * detailStock.buyPrice);
+                            const currentValue = detailStock.currentValue ?? (detailStock.currentPrice ? detailStock.quantity * detailStock.currentPrice : investedValue);
+                            const profitLoss = currentValue - investedValue;
+                            const isProfit = profitLoss >= 0;
+                            const plPercent = investedValue > 0 ? (profitLoss / investedValue) * 100 : 0;
+
+                            return (
+                                <div className={cn(
+                                    "p-6 rounded-3xl border-2 bg-white dark:bg-gray-900 transition-all shadow-lg",
+                                    isProfit
+                                        ? "border-emerald-500 shadow-emerald-500/10"
+                                        : "border-rose-500 shadow-rose-500/10"
+                                )}>
+                                    <div className="flex justify-between items-end">
+                                        <div>
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Current Valuation</p>
+                                            <p className={cn(
+                                                "text-3xl font-black",
+                                                isProfit ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
+                                            )}>
+                                                {formatCurrency(currentValue)}
+                                            </p>
+                                            <div className="flex items-center gap-2 mt-1">
+                                                <span className={cn(
+                                                    "text-sm font-bold flex items-center gap-1",
+                                                    isProfit ? "text-emerald-600" : "text-rose-600"
+                                                )}>
+                                                    {isProfit ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                                                    {isProfit ? '+' : ''}{formatCurrency(Math.abs(profitLoss))}
+                                                </span>
+                                                <span className={cn(
+                                                    "text-xs font-semibold px-2 py-0.5 rounded-full",
+                                                    isProfit ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-700"
+                                                )}>
+                                                    {isProfit ? '+' : ''}{plPercent.toFixed(2)}%
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="text-right">
+                                            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-1">Total Invested</p>
+                                            <p className="text-xl font-bold text-gray-700 dark:text-gray-300">
+                                                {formatCurrency(investedValue)}
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Total Invested</p>
-                                    <p className="text-lg font-bold opacity-90">
-                                        {formatCurrency(detailStock.totalInvested ?? (detailStock.quantity * detailStock.buyPrice))}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
+                            );
+                        })()}
 
                         <div className="pt-2">
                             <button

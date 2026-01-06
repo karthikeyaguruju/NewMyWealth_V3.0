@@ -25,8 +25,6 @@ import {
     ResponsiveContainer
 } from 'recharts';
 import { Greeting } from '@/components/Dashboard/Greeting';
-import { MonthlyTrends } from '@/components/Dashboard/MonthlyTrends';
-import { FinancialInsights } from '@/components/Dashboard/FinancialInsights';
 import { PeriodicFinanceChart } from '@/components/Dashboard/PeriodicFinanceChart';
 
 interface AnalyticsData {
@@ -38,7 +36,13 @@ interface AnalyticsData {
         savingsRate: number;
         incomeGrowth: number;
         expenseGrowth: number;
+        incomeBreakdown: { name: string; value: number }[];
+        expenseBreakdown: { name: string; value: number }[];
+        investmentBreakdown: { name: string; value: number }[];
+        transactionCount: number;
+        stockCount: number;
     };
+    recentTransactions: Transaction[];
     metrics: {
         totalIncome: number;
         totalExpenses: number;
@@ -74,7 +78,6 @@ export default function DashboardPage() {
         endDate: format(endOfMonth(new Date()), 'yyyy-MM-dd'),
     });
     const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
-    const [recentTransactions, setRecentTransactions] = useState<Transaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
 
@@ -96,16 +99,10 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
         try {
             setLoading(true);
-            const [analyticsRes, transactionsRes] = await Promise.all([
-                fetch(`/api/analytics?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`),
-                fetch('/api/transactions?limit=5')
-            ]);
-
+            // Analytics API now includes this month's transactions
+            const analyticsRes = await fetch(`/api/analytics?startDate=${dateRange.startDate}&endDate=${dateRange.endDate}`);
             const analyticsData = await analyticsRes.json();
-            const transactionsData = await transactionsRes.json();
-
             setAnalytics(analyticsData);
-            setRecentTransactions(transactionsData.transactions || []);
         } catch (error) {
             console.error('Failed to fetch dashboard data:', error);
         } finally {
@@ -127,7 +124,6 @@ export default function DashboardPage() {
         );
     }
 
-    // Use THIS MONTH data for dashboard cards
     const thisMonth = analytics?.thisMonth ?? {
         income: 0,
         expenses: 0,
@@ -136,7 +132,14 @@ export default function DashboardPage() {
         savingsRate: 0,
         incomeGrowth: 0,
         expenseGrowth: 0,
+        incomeBreakdown: [],
+        expenseBreakdown: [],
+        investmentBreakdown: [],
+        transactionCount: 0,
+        stockCount: 0,
     };
+
+    const recentTransactions = analytics?.recentTransactions ?? [];
 
     const currentMonthName = format(new Date(), 'MMMM yyyy');
 
@@ -194,12 +197,6 @@ export default function DashboardPage() {
                         <h2 className="text-2xl font-black text-gray-900 dark:text-white tracking-tight">Financial Performance</h2>
                     </div>
                     <PeriodicFinanceChart />
-                    <FinancialInsights
-                        expenseData={analytics.expenseBreakdown}
-                        investmentData={analytics.investmentAllocation}
-                        savingsRate={thisMonth.savingsRate}
-                    />
-                    <MonthlyTrends data={analytics.monthlyData} />
                 </div>
 
                 <div className="flex items-center gap-3 mb-2">
@@ -216,7 +213,7 @@ export default function DashboardPage() {
                                 <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                                     Recent Transactions
                                 </h3>
-                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Your latest financial activities</p>
+                                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Showing 5 most recent activities</p>
                             </div>
                             <Link
                                 href="/transactions"
@@ -273,8 +270,8 @@ export default function DashboardPage() {
                                     <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
                                         <CreditCard className="text-gray-400" size={24} />
                                     </div>
-                                    <p className="text-gray-500 dark:text-gray-400 font-medium">No recent transactions found</p>
-                                    <Link href="/transactions" className="text-primary-600 text-sm font-bold mt-2 inline-block">Add your first transaction</Link>
+                                    <p className="text-gray-500 dark:text-gray-400 font-medium">No transactions found</p>
+                                    <Link href="/transactions" className="text-primary-600 text-sm font-bold mt-2 inline-block">Add a transaction</Link>
                                 </div>
                             )}
                         </div>
@@ -286,17 +283,17 @@ export default function DashboardPage() {
                             <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                                 Income Sources
                             </h3>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Where your money comes from</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">This month's income breakdown</p>
                         </div>
 
                         <div className="flex-1 min-h-[300px] relative">
-                            {analytics.incomeBreakdown && analytics.incomeBreakdown.length > 0 ? (
+                            {thisMonth.incomeBreakdown && thisMonth.incomeBreakdown.length > 0 ? (
                                 <div className="h-full flex flex-col">
                                     <div className="h-64">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <PieChart>
                                                 <defs>
-                                                    {analytics.incomeBreakdown.map((_, index) => (
+                                                    {thisMonth.incomeBreakdown.map((_, index) => (
                                                         <linearGradient key={`income-gradient-${index}`} id={`incomeColorGradient-${index}`} x1="0" y1="0" x2="0" y2="1">
                                                             <stop offset="5%" stopColor={COLORS[(index + 2) % COLORS.length]} stopOpacity={0.8} />
                                                             <stop offset="95%" stopColor={COLORS[(index + 2) % COLORS.length]} stopOpacity={0.5} />
@@ -304,7 +301,7 @@ export default function DashboardPage() {
                                                     ))}
                                                 </defs>
                                                 <Pie
-                                                    data={analytics.incomeBreakdown}
+                                                    data={thisMonth.incomeBreakdown}
                                                     cx="50%"
                                                     cy="50%"
                                                     innerRadius={70}
@@ -313,7 +310,7 @@ export default function DashboardPage() {
                                                     dataKey="value"
                                                     stroke="none"
                                                 >
-                                                    {analytics.incomeBreakdown.map((entry, index) => (
+                                                    {thisMonth.incomeBreakdown.map((entry, index) => (
                                                         <Cell key={`income-cell-${index}`} fill={`url(#incomeColorGradient-${index})`} className="hover:opacity-80 transition-opacity cursor-pointer outline-none" />
                                                     ))}
                                                 </Pie>
@@ -339,7 +336,7 @@ export default function DashboardPage() {
                                     </div>
 
                                     <div className="mt-8 space-y-3 overflow-y-auto max-h-[200px] pr-2 custom-scrollbar text-xs">
-                                        {analytics.incomeBreakdown.sort((a, b) => b.value - a.value).map((category, index) => (
+                                        {thisMonth.incomeBreakdown.sort((a, b) => b.value - a.value).map((category, index) => (
                                             <div key={index} className="flex items-center justify-between group">
                                                 <div className="flex items-center gap-3">
                                                     <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[(index + 2) % COLORS.length] }} />
@@ -355,7 +352,7 @@ export default function DashboardPage() {
                                     <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mb-4">
                                         <DollarSign className="text-gray-400" size={24} />
                                     </div>
-                                    <p className="text-gray-500 dark:text-gray-400 font-medium text-xs">No income data yet</p>
+                                    <p className="text-gray-500 dark:text-gray-400 font-medium text-xs">No income this month</p>
                                 </div>
                             )}
                         </div>
