@@ -18,7 +18,7 @@ import {
     Area,
     AreaChart,
 } from 'recharts';
-import { Target, TrendingUp, Layers, PieChart as PieChartIcon } from 'lucide-react';
+import { Target, TrendingUp, TrendingDown, Layers, PieChart as PieChartIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InvestmentData {
@@ -57,11 +57,25 @@ export default function InvestmentsPage() {
     const [data, setData] = useState<InvestmentData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [hiddenCategories, setHiddenCategories] = useState<Set<string>>(new Set());
+    const [hiddenAllocationCategories, setHiddenAllocationCategories] = useState<Set<string>>(new Set());
+    const [hiddenBreakdownCategories, setHiddenBreakdownCategories] = useState<Set<string>>(new Set());
 
-    // Toggle category visibility
-    const toggleCategory = (category: string) => {
-        setHiddenCategories(prev => {
+    // Toggle category visibility for Allocation card
+    const toggleAllocationCategory = (category: string) => {
+        setHiddenAllocationCategories(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(category)) {
+                newSet.delete(category);
+            } else {
+                newSet.add(category);
+            }
+            return newSet;
+        });
+    };
+
+    // Toggle category visibility for Breakdown card
+    const toggleBreakdownCategory = (category: string) => {
+        setHiddenBreakdownCategories(prev => {
             const newSet = new Set(prev);
             if (newSet.has(category)) {
                 newSet.delete(category);
@@ -250,7 +264,7 @@ export default function InvestmentsPage() {
                             <ResponsiveContainer width="100%" height="100%">
                                 <PieChart>
                                     <Pie
-                                        data={data.allocation}
+                                        data={data.allocation.filter(entry => !hiddenAllocationCategories.has(entry.name))}
                                         cx="50%"
                                         cy="50%"
                                         innerRadius={60}
@@ -259,8 +273,10 @@ export default function InvestmentsPage() {
                                         dataKey="value"
                                         stroke="none"
                                     >
-                                        {data.allocation.map((_, index) => (
-                                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
+                                        {data.allocation.map((entry, index) => (
+                                            !hiddenAllocationCategories.has(entry.name) && (
+                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} className="outline-none" />
+                                            )
                                         ))}
                                     </Pie>
                                     <Tooltip content={<CustomTooltip />} />
@@ -268,20 +284,55 @@ export default function InvestmentsPage() {
                             </ResponsiveContainer>
                             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
                                 <PieChartIcon className="mx-auto text-gray-300 dark:text-gray-600 mb-0.5" size={18} />
-                                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">Total</p>
-                                <p className="text-base font-black text-gray-900 dark:text-white">₹{data.totalInvested.toLocaleString()}</p>
+                                <p className="text-[9px] font-black uppercase tracking-widest text-gray-400">
+                                    {hiddenAllocationCategories.size > 0 ? 'Visible' : 'Total'}
+                                </p>
+                                <p className="text-base font-black text-gray-900 dark:text-white">
+                                    ₹{data.allocation
+                                        .filter(entry => !hiddenAllocationCategories.has(entry.name))
+                                        .reduce((sum, entry) => sum + entry.value, 0)
+                                        .toLocaleString()}
+                                </p>
                             </div>
                         </div>
-                        <div className="mt-4 grid grid-cols-2 gap-2">
-                            {data.allocation.map((entry, index) => (
-                                <div key={index} className="flex items-center gap-2 p-2 rounded-xl bg-white/30 dark:bg-gray-800/20 border border-white/10">
-                                    <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                                    <div className="flex flex-col min-w-0">
-                                        <span className="text-[10px] font-bold text-gray-500 truncate">{entry.name}</span>
-                                        <span className="text-xs font-black text-gray-900 dark:text-white">₹{entry.value.toLocaleString()}</span>
-                                    </div>
-                                </div>
-                            ))}
+                        {/* Interactive Legend for Pie Chart */}
+                        <div className="mt-6 flex flex-wrap gap-2 justify-center">
+                            {data.allocation.map((entry, index) => {
+                                const isHidden = hiddenAllocationCategories.has(entry.name);
+                                return (
+                                    <button
+                                        key={entry.name}
+                                        onClick={() => toggleAllocationCategory(entry.name)}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] transition-all duration-200 border",
+                                            isHidden
+                                                ? "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 opacity-50"
+                                                : "bg-white dark:bg-gray-800 border-transparent shadow-sm hover:shadow-md"
+                                        )}
+                                    >
+                                        <div
+                                            className={cn(
+                                                "w-2.5 h-2.5 rounded-sm transition-all",
+                                                isHidden && "opacity-30"
+                                            )}
+                                            style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                        />
+                                        <div className="flex flex-col items-start leading-tight">
+                                            <span className={cn(
+                                                "text-[10px] font-bold transition-all",
+                                                isHidden ? "text-gray-400 line-through" : "text-gray-500"
+                                            )}>
+                                                {entry.name}
+                                            </span>
+                                            {!isHidden && (
+                                                <span className="text-[11px] font-black text-gray-900 dark:text-white">
+                                                    ₹{entry.value.toLocaleString()}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </button>
+                                );
+                            })}
                         </div>
                     </div>
 
@@ -293,9 +344,18 @@ export default function InvestmentsPage() {
                                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Growth Projection</h3>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Cumulative portfolio growth</p>
                             </div>
-                            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-50 dark:bg-emerald-900/30">
-                                <TrendingUp size={14} className="text-emerald-500" />
-                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                            <div className={cn(
+                                "flex items-center gap-1.5 px-3 py-1.5 rounded-full",
+                                data.monthlyGrowth >= 0
+                                    ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400"
+                                    : "bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400"
+                            )}>
+                                {data.monthlyGrowth >= 0 ? (
+                                    <TrendingUp size={14} className="text-emerald-500" />
+                                ) : (
+                                    <TrendingDown size={14} className="text-rose-500" />
+                                )}
+                                <span className="text-xs font-bold">
                                     {data.monthlyGrowth >= 0 ? '+' : ''}{data.monthlyGrowth.toFixed(1)}%
                                 </span>
                             </div>
@@ -384,7 +444,7 @@ export default function InvestmentsPage() {
                                 />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.02)' }} />
                                 {/* Grouped bars - each category gets its own bar side by side */}
-                                {data.categories?.filter(cat => !hiddenCategories.has(cat)).map((category: string, index: number) => {
+                                {data.categories?.filter(cat => !hiddenBreakdownCategories.has(cat)).map((category: string, index: number) => {
                                     // Get original index for consistent colors
                                     const originalIndex = data.categories?.indexOf(category) ?? index;
                                     return (
@@ -406,11 +466,11 @@ export default function InvestmentsPage() {
                         <p className="text-[10px] text-gray-400 text-center mb-2">Click to show/hide categories</p>
                         <div className="flex flex-wrap gap-2 justify-center">
                             {data.categories?.map((category: string, index: number) => {
-                                const isHidden = hiddenCategories.has(category);
+                                const isHidden = hiddenBreakdownCategories.has(category);
                                 return (
                                     <button
                                         key={category}
-                                        onClick={() => toggleCategory(category)}
+                                        onClick={() => toggleBreakdownCategory(category)}
                                         className={cn(
                                             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] transition-all duration-200 border",
                                             isHidden
