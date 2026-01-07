@@ -1,58 +1,53 @@
 // Investments API route
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/jwt';
+import { supabase, getServiceSupabase } from '@/lib/supabase';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 
-async function getUserId(request: NextRequest): Promise<string | null> {
+/** Extract user from Supabase token */
+async function getUser(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
     if (!token) return null;
-    const decoded = await verifyToken(token);
-    return decoded?.userId || null;
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user;
 }
 
 // GET /api/investments - Get investment analytics
 export async function GET(request: NextRequest) {
     try {
-        const userId = await getUserId(request);
-        if (!userId) {
+        const user = await getUser(request);
+        if (!user) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
+        const userId = user.id;
+        const supabaseService = getServiceSupabase();
 
         const { searchParams } = new URL(request.url);
         const startDateStr = searchParams.get('startDate');
         const endDateStr = searchParams.get('endDate');
 
-        // Convert query strings to Date objects
-        const startDate = startDateStr ? new Date(startDateStr) : undefined;
-        const endDate = endDateStr ? new Date(endDateStr) : undefined;
+        // Get all investment transactions and stocks
+        const { data: allInvestments, error: invError } = await supabaseService
+            .from('transactions')
+            .select('*')
+            .eq('user_id', userId)
+            .eq('type', 'investment')
+            .order('date', { ascending: true });
 
-        // Get all investment transactions first
-        const [allInvestments, stocks] = await Promise.all([
-            prisma.transaction.findMany({
-                where: {
-                    userId,
-                    type: 'investment',
-                    // Apply date filter if provided
-                    ...(startDate && endDate && {
-                        date: {
-                            gte: startDate,
-                            lte: endDate,
-                        },
-                    }),
-                },
-                orderBy: {
-                    date: 'asc',
-                },
-            }),
-            prisma.stock.findMany({
-                where: { userId }
-            })
-        ]);
+        const { data: allStocks, error: stockError } = await supabaseService
+            .from('stocks')
+            .select('*')
+            .eq('user_id', userId);
 
-        // Filter out terminated investments in JavaScript
-        const investments = allInvestments.filter(t => t.status !== 'terminated');
+        if (invError || stockError) {
+            console.error('Database error:', invError || stockError);
+            throw invError || stockError;
+        }
+
+        const stocks = allStocks || [];
+        // Filter out terminated investments
+        const investments = (allInvestments || []).filter(t => t.status !== 'terminated');
 
         // Group by category
         const byCategory: Record<string, number> = {};
@@ -60,7 +55,6 @@ export async function GET(request: NextRequest) {
             byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;
         });
 
-        // Add Stock data to categories
         // Group raw stock transactions by symbol to get active holdings
         const stockHoldings = stocks.reduce((acc: any, stock: any) => {
             const symbol = stock.symbol.toUpperCase();
@@ -70,11 +64,11 @@ export async function GET(request: NextRequest) {
 
             if (stock.type === 'BUY') {
                 acc[symbol].quantity += stock.quantity;
-                acc[symbol].totalInvested += (stock.quantity * stock.buyPrice);
+                acc[symbol].totalInvested += (stock.quantity * stock.buy_price);
             } else {
                 acc[symbol].quantity -= stock.quantity;
                 const avgCost = acc[symbol].totalInvested / (acc[symbol].quantity + stock.quantity);
-                acc[symbol].totalInvested -= (stock.quantity * avgCost);
+                acc[symbol].totalInvested -= (stock.quantity * (avgCost || 0));
             }
             return acc;
         }, {});
@@ -108,8 +102,8 @@ export async function GET(request: NextRequest) {
         const unifiedTransactions = [
             ...investments.map(t => ({ date: new Date(t.date), amount: t.amount })),
             ...stocks.map(s => ({
-                date: new Date(s.date || s.createdAt),
-                amount: s.type === 'BUY' ? (s.quantity * s.buyPrice) : -(s.quantity * (s.sellPrice || s.buyPrice))
+                date: new Date(s.date || s.created_at),
+                amount: s.type === 'BUY' ? (s.quantity * s.buy_price) : -(s.quantity * (s.sell_price || s.buy_price))
             }))
         ];
 
@@ -154,11 +148,11 @@ export async function GET(request: NextRequest) {
 
             // Get stock purchases for this month
             const monthStocks = stocks.filter((s: any) => {
-                if (!s.date) return false;
-                const stockDate = new Date(s.date);
+                if (!s.date && !s.created_at) return false;
+                const stockDate = new Date(s.date || s.created_at);
                 return stockDate >= monthStart && stockDate <= monthEnd && s.type === 'BUY';
             });
-            const stocksAmount = monthStocks.reduce((sum: number, s: any) => sum + (s.quantity * s.buyPrice), 0);
+            const stocksAmount = monthStocks.reduce((sum: number, s: any) => sum + (s.quantity * s.buy_price), 0);
 
             // Build category breakdown for this month
             const monthCategoryBreakdown: Record<string, number> = {};

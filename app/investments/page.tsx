@@ -128,7 +128,7 @@ export default function InvestmentsPage() {
         }
     };
 
-    if (loading || !data) {
+    if (loading) {
         return (
             <DashboardLayout>
                 <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
@@ -137,6 +137,30 @@ export default function InvestmentsPage() {
                         <div className="absolute inset-0 border-4 border-primary-600 border-t-transparent rounded-full animate-spin"></div>
                     </div>
                     <p className="text-gray-500 dark:text-gray-400 font-medium animate-pulse">Analyzing portfolio...</p>
+                </div>
+            </DashboardLayout>
+        );
+    }
+
+    if (error || !data) {
+        return (
+            <DashboardLayout>
+                <div className="flex flex-col items-center justify-center h-[60vh] gap-4 px-6 text-center">
+                    <div className="w-16 h-16 bg-rose-100 dark:bg-rose-900/30 rounded-full flex items-center justify-center text-rose-600 dark:text-rose-400">
+                        <Layers size={32} />
+                    </div>
+                    <div>
+                        <h2 className="text-xl font-bold text-gray-900 dark:text-white">Failed to Load Portfolio</h2>
+                        <p className="text-gray-500 dark:text-gray-400 mt-2 max-w-sm">
+                            {error || "We couldn't retrieve your investment data. Please try again."}
+                        </p>
+                    </div>
+                    <button
+                        onClick={fetchInvestments}
+                        className="px-6 py-2 bg-primary-600 text-white rounded-xl font-bold shadow-lg shadow-primary-600/20 hover:bg-primary-700 transition-all active:scale-95"
+                    >
+                        Retry Analysis
+                    </button>
                 </div>
             </DashboardLayout>
         );
