@@ -28,9 +28,10 @@ export async function GET(request: NextRequest) {
         const endDateStr = searchParams.get('endDate');
 
         // Get all investment transactions and stocks
+        // Joining with categories table to get the human-readable name
         const { data: allInvestments, error: invError } = await supabaseService
             .from('transactions')
-            .select('*')
+            .select('*, categories(name)')
             .eq('user_id', userId)
             .eq('type', 'investment')
             .order('date', { ascending: true });
@@ -49,10 +50,11 @@ export async function GET(request: NextRequest) {
         // Filter out terminated investments
         const investments = (allInvestments || []).filter(t => t.status !== 'terminated');
 
-        // Group by category
+        // Group by category name (fetched from joint)
         const byCategory: Record<string, number> = {};
         investments.forEach((t) => {
-            byCategory[t.category] = (byCategory[t.category] || 0) + t.amount;
+            const catName = t.categories?.name || t.category || 'Uncategorized';
+            byCategory[catName] = (byCategory[catName] || 0) + Number(t.amount);
         });
 
         // Group raw stock transactions by symbol to get active holdings
@@ -63,12 +65,12 @@ export async function GET(request: NextRequest) {
             }
 
             if (stock.type === 'BUY') {
-                acc[symbol].quantity += stock.quantity;
-                acc[symbol].totalInvested += (stock.quantity * stock.buy_price);
+                acc[symbol].quantity += Number(stock.quantity);
+                acc[symbol].totalInvested += (Number(stock.quantity) * Number(stock.buy_price));
             } else {
-                acc[symbol].quantity -= stock.quantity;
-                const avgCost = acc[symbol].totalInvested / (acc[symbol].quantity + stock.quantity);
-                acc[symbol].totalInvested -= (stock.quantity * (avgCost || 0));
+                acc[symbol].quantity -= Number(stock.quantity);
+                const avgCost = acc[symbol].totalInvested / (acc[symbol].quantity + Number(stock.quantity));
+                acc[symbol].totalInvested -= (Number(stock.quantity) * (avgCost || 0));
             }
             return acc;
         }, {});
@@ -100,17 +102,30 @@ export async function GET(request: NextRequest) {
 
         // Unified data for trends (Investments + Stock Transactions)
         const unifiedTransactions = [
-            ...investments.map(t => ({ date: new Date(t.date), amount: t.amount })),
+            ...investments.map(t => ({ date: new Date(t.date), amount: Number(t.amount) })),
             ...stocks.map(s => ({
                 date: new Date(s.date || s.created_at),
-                amount: s.type === 'BUY' ? (s.quantity * s.buy_price) : -(s.quantity * (s.sell_price || s.buy_price))
+                amount: s.type === 'BUY' ? (Number(s.quantity) * Number(s.buy_price)) : -(Number(s.quantity) * (Number(s.sell_price) || Number(s.buy_price)))
             }))
         ];
 
-        // Generate trend data based on historyMonths
-        const historyMonths = searchParams.get('historyMonths') ? parseInt(searchParams.get('historyMonths')!) : 6;
-        const monthlyData: any[] = [];
+        // Determine historyMonths
         const today = new Date();
+        let historyMonths = searchParams.get('historyMonths') ? parseInt(searchParams.get('historyMonths')!) : 6;
+
+        // If 'ALL' is requested, calculate months from the oldest transaction
+        if (startDateStr === 'all' || searchParams.get('historyMonths') === 'ALL') {
+            if (unifiedTransactions.length > 0) {
+                const oldestTx = unifiedTransactions.reduce((oldest, tx) =>
+                    tx.date < oldest ? tx.date : oldest, new Date());
+                const monthsDiff = (today.getFullYear() - oldestTx.getFullYear()) * 12 + (today.getMonth() - oldestTx.getMonth());
+                historyMonths = Math.max(monthsDiff + 1, 12); // Minimum 12 months for 'ALL'
+            } else {
+                historyMonths = 12;
+            }
+        }
+
+        const monthlyData: any[] = [];
 
         // Calculate this month's and last month's totals for growth
         const thisMonthStart = startOfMonth(today);
@@ -152,12 +167,13 @@ export async function GET(request: NextRequest) {
                 const stockDate = new Date(s.date || s.created_at);
                 return stockDate >= monthStart && stockDate <= monthEnd && s.type === 'BUY';
             });
-            const stocksAmount = monthStocks.reduce((sum: number, s: any) => sum + (s.quantity * s.buy_price), 0);
+            const stocksAmount = monthStocks.reduce((sum: number, s: any) => sum + (Number(s.quantity) * Number(s.buy_price)), 0);
 
             // Build category breakdown for this month
             const monthCategoryBreakdown: Record<string, number> = {};
             monthInvestments.forEach((t) => {
-                monthCategoryBreakdown[t.category] = (monthCategoryBreakdown[t.category] || 0) + t.amount;
+                const catName = t.categories?.name || t.category || 'Uncategorized';
+                monthCategoryBreakdown[catName] = (monthCategoryBreakdown[catName] || 0) + Number(t.amount);
             });
             if (stocksAmount > 0) {
                 monthCategoryBreakdown['Equity Stocks'] = (monthCategoryBreakdown['Equity Stocks'] || 0) + stocksAmount;

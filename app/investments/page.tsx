@@ -109,7 +109,7 @@ export default function InvestmentsPage() {
                 const formattedEndDate = format(endOfMonth(endDate), 'yyyy-MM-dd');
                 queryParams = `?startDate=${formattedStartDate}&endDate=${formattedEndDate}&historyMonths=${historyMonths}`;
             } else {
-                queryParams = `?historyMonths=12`;
+                queryParams = `?historyMonths=ALL&startDate=all`;
             }
 
             const response = await fetch(`/api/investments${queryParams}`);
