@@ -7,7 +7,7 @@ export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
 
     // Public routes that don't need auth
-    const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup';
+    const isPublicRoute = pathname === '/' || pathname === '/login' || pathname === '/signup' || pathname === '/forgot-password' || pathname === '/reset-password';
 
     // Allow API routes to handle their own security or pass through
     if (pathname.startsWith('/api')) {

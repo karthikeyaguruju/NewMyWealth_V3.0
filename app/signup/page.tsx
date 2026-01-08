@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Mail, Lock, User, Sparkles, Shield, Rocket, Target, Zap, Sun, Moon } from 'lucide-react';
@@ -22,6 +22,46 @@ export default function SignupPage() {
     });
     const [errors, setErrors] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    const [resending, setResending] = useState(false);
+    const [resendTimer, setResendTimer] = useState(0);
+
+    // Handle resend countdown
+    useEffect(() => {
+        let timer: any;
+        if (resendTimer > 0) {
+            timer = setInterval(() => {
+                setResendTimer(prev => prev - 1);
+            }, 1000);
+        }
+        return () => clearInterval(timer);
+    }, [resendTimer]);
+
+    const handleResend = async () => {
+        if (resendTimer > 0 || resending) return;
+
+        setResending(true);
+        try {
+            const response = await fetch('/api/auth/resend-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: formData.email }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                showToast('success', 'Verification link resent!');
+                setResendTimer(60); // 60 second cooldown
+            } else {
+                showToast('error', data.error || 'Failed to resend link');
+            }
+        } catch (err) {
+            showToast('error', 'An error occurred. Please try again.');
+        } finally {
+            setResending(false);
+        }
+    };
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -54,8 +94,9 @@ export default function SignupPage() {
                 setLoading(false);
                 return;
             }
-            showToast('success', 'Account created! Please log in.');
-            router.push('/login');
+
+            setIsSubmitted(true);
+            showToast('success', 'Confirmation email sent! Please check your inbox.');
         } catch (err) {
             const errorMessage = 'An error occurred. Please try again.';
             setErrors({ general: errorMessage });
@@ -146,105 +187,160 @@ export default function SignupPage() {
                         <div className="absolute top-0 left-0 w-24 h-24 bg-emerald-600/5 rounded-full -ml-12 -mt-12 blur-2xl pointer-events-none" />
 
                         <div className="relative z-10">
-                            <div className="mb-6 text-center">
-                                <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-1">
-                                    Join
-                                </h1>
-                                <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight text-sm">
-                                    Establish your digital financial footprint.
-                                </p>
-                            </div>
-
-                            <form onSubmit={handleSubmit} className="space-y-4">
-                                <AnimatePresence mode='wait'>
-                                    {errors.general && (
-                                        <motion.div
-                                            initial={{ opacity: 0, y: -10 }}
-                                            animate={{ opacity: 1, y: 0 }}
-                                            exit={{ opacity: 0, y: -10 }}
-                                            className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2.5"
-                                        >
-                                            <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
-                                            {errors.general}
-                                        </motion.div>
-                                    )}
-                                </AnimatePresence>
-
-                                <div className="space-y-3.5">
-                                    <Input
-                                        type="text"
-                                        label="Full Name"
-                                        placeholder="Full Name"
-                                        value={formData.fullName}
-                                        onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
-                                        leftIcon={<User size={18} className="text-gray-400" />}
-                                        error={errors.fullName}
-                                        required
-                                        className="rounded-[16px] border-gray-100 dark:border-white/5"
-                                    />
-
-                                    <Input
-                                        type="email"
-                                        label="Email"
-                                        placeholder="Email"
-                                        value={formData.email}
-                                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                                        leftIcon={<Mail size={18} className="text-gray-400" />}
-                                        error={errors.email}
-                                        required
-                                        className="rounded-[16px] border-gray-100 dark:border-white/5"
-                                    />
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                                        <Input
-                                            type="password"
-                                            label="Access Key"
-                                            placeholder="••••••••"
-                                            value={formData.password}
-                                            onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                                            leftIcon={<Lock size={18} className="text-gray-400" />}
-                                            error={errors.password}
-                                            required
-                                            className="rounded-[16px] border-gray-100 dark:border-white/5"
-                                        />
-
-                                        <Input
-                                            type="password"
-                                            label="Verify Key"
-                                            placeholder="••••••••"
-                                            value={formData.confirmPassword}
-                                            onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                                            leftIcon={<Shield size={18} className="text-gray-400" />}
-                                            error={errors.confirmPassword}
-                                            required
-                                            className="rounded-[16px] border-gray-100 dark:border-white/5"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="pt-2">
-                                    <SwipeButton
-                                        text="Swipe to Sign Up"
-                                        loadingText="Signing Up..."
-                                        isLoading={loading}
-                                        onComplete={() => handleSubmit()}
-                                        disabled={!isFormValid}
-                                        className="h-14 rounded-[18px]"
-                                    />
-                                </div>
-                            </form>
-
-                            <div className="mt-6 pt-5 border-t border-gray-100 dark:border-white/5 text-center">
-                                <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">
-                                    Already have an account?{' '}
-                                    <Link
-                                        href="/login"
-                                        className="text-primary-600 dark:text-primary-400 font-black hover:underline underline-offset-4 decoration-2"
+                            <AnimatePresence mode="wait">
+                                {!isSubmitted ? (
+                                    <motion.div
+                                        key="signup-form"
+                                        initial={{ opacity: 0, x: -20 }}
+                                        animate={{ opacity: 1, x: 0 }}
+                                        exit={{ opacity: 0, x: 20 }}
+                                        transition={{ duration: 0.3 }}
                                     >
-                                        Log In
-                                    </Link>
-                                </p>
-                            </div>
+                                        <div className="mb-6 text-center">
+                                            <h1 className="text-3xl font-black text-gray-900 dark:text-white tracking-tight mb-1">
+                                                Join
+                                            </h1>
+                                            <p className="text-gray-500 dark:text-gray-400 font-medium tracking-tight text-sm">
+                                                Establish your digital financial footprint.
+                                            </p>
+                                        </div>
+
+                                        <form onSubmit={handleSubmit} className="space-y-4">
+                                            <AnimatePresence mode='wait'>
+                                                {errors.general && (
+                                                    <motion.div
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        exit={{ opacity: 0, y: -10 }}
+                                                        className="p-3.5 rounded-xl bg-rose-50 dark:bg-rose-900/10 border border-rose-100 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 text-xs font-bold flex items-center gap-2.5"
+                                                    >
+                                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+                                                        {errors.general}
+                                                    </motion.div>
+                                                )}
+                                            </AnimatePresence>
+
+                                            <div className="space-y-3.5">
+                                                <Input
+                                                    type="text"
+                                                    label="Full Name"
+                                                    placeholder="Full Name"
+                                                    value={formData.fullName}
+                                                    onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                                                    leftIcon={<User size={18} className="text-gray-400" />}
+                                                    error={errors.fullName}
+                                                    required
+                                                    className="rounded-[16px] border-gray-100 dark:border-white/5"
+                                                />
+
+                                                <Input
+                                                    type="email"
+                                                    label="Email"
+                                                    placeholder="Email"
+                                                    value={formData.email}
+                                                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                                    leftIcon={<Mail size={18} className="text-gray-400" />}
+                                                    error={errors.email}
+                                                    required
+                                                    className="rounded-[16px] border-gray-100 dark:border-white/5"
+                                                />
+
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                                                    <Input
+                                                        type="password"
+                                                        label="Enter Password"
+                                                        placeholder="••••••••"
+                                                        value={formData.password}
+                                                        onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                                        leftIcon={<Lock size={18} className="text-gray-400" />}
+                                                        error={errors.password}
+                                                        required
+                                                        className="rounded-[16px] border-gray-100 dark:border-white/5"
+                                                    />
+
+                                                    <Input
+                                                        type="password"
+                                                        label="Confirm Password"
+                                                        placeholder="••••••••"
+                                                        value={formData.confirmPassword}
+                                                        onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                                                        leftIcon={<Shield size={18} className="text-gray-400" />}
+                                                        error={errors.confirmPassword}
+                                                        required
+                                                        className="rounded-[16px] border-gray-100 dark:border-white/5"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="pt-2">
+                                                <SwipeButton
+                                                    text="Swipe to Sign Up"
+                                                    loadingText="Signing Up..."
+                                                    isLoading={loading}
+                                                    onComplete={() => handleSubmit()}
+                                                    disabled={!isFormValid}
+                                                    className="h-14 rounded-[18px]"
+                                                />
+                                            </div>
+                                        </form>
+
+                                        <div className="mt-6 pt-5 border-t border-gray-100 dark:border-white/5 text-center">
+                                            <p className="text-gray-500 dark:text-gray-400 text-xs font-medium">
+                                                Already have an account?{' '}
+                                                <Link
+                                                    href="/login"
+                                                    className="text-primary-600 dark:text-primary-400 font-black hover:underline underline-offset-4 decoration-2"
+                                                >
+                                                    Log In
+                                                </Link>
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="success-message"
+                                        initial={{ opacity: 0, scale: 0.9 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        transition={{ duration: 0.5, type: "spring" }}
+                                        className="text-center py-8"
+                                    >
+                                        <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mx-auto mb-6">
+                                            <Mail className="text-emerald-600 dark:text-emerald-400" size={40} />
+                                        </div>
+                                        <h2 className="text-2xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">Check your Email</h2>
+                                        <p className="text-gray-500 dark:text-gray-400 text-sm mb-6 max-w-[280px] mx-auto leading-relaxed">
+                                            We've sent a verification link to <span className="text-primary-600 dark:text-primary-400 font-bold">{formData.email}</span>. Please click it to activate your wealth command center.
+                                        </p>
+
+                                        <div className="space-y-4">
+                                            <Link
+                                                href="/login"
+                                                className="w-full inline-flex items-center justify-center gap-2 px-8 h-12 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold transition-all shadow-lg shadow-primary-600/20 active:scale-95"
+                                            >
+                                                Continue to Login
+                                            </Link>
+
+                                            <div className="pt-2">
+                                                <button
+                                                    onClick={handleResend}
+                                                    disabled={resending || resendTimer > 0}
+                                                    className="text-xs font-bold text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors disabled:opacity-50 disabled:cursor-not-allowed group"
+                                                >
+                                                    {resending ? (
+                                                        "Resending..."
+                                                    ) : resendTimer > 0 ? (
+                                                        `Resend Link in ${resendTimer}s`
+                                                    ) : (
+                                                        <>
+                                                            Didn't get it? <span className="underline underline-offset-2 decoration-1 group-hover:decoration-2">Resend Link</span>
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 

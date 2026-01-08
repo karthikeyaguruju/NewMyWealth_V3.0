@@ -18,7 +18,8 @@ import {
     Clock,
     Plus,
     CreditCard,
-    LineChart
+    LineChart,
+    FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
@@ -58,6 +59,11 @@ const mainItems = [
         name: 'Analytics',
         href: '/analytics',
         icon: PieChart,
+    },
+    {
+        name: 'Monthly Reports',
+        href: '/reports',
+        icon: FileText,
     },
 ];
 

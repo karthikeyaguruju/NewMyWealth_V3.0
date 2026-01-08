@@ -42,7 +42,15 @@ export default function LoginPage() {
             const data = await response.json();
 
             if (!response.ok) {
-                const errorMessage = data.error || 'Login failed';
+                let errorMessage = data.error || 'Login failed';
+
+                // Map common Supabase errors to user-friendly messages
+                if (errorMessage.toLowerCase().includes('email not confirmed')) {
+                    errorMessage = 'Please verify your email address before logging in. Check your inbox for the activation link.';
+                } else if (errorMessage.toLowerCase().includes('invalid login credentials')) {
+                    errorMessage = 'Invalid email or password. Please try again.';
+                }
+
                 setError(errorMessage);
                 showToast('error', errorMessage);
                 setLoading(false);
@@ -178,7 +186,7 @@ export default function LoginPage() {
 
                                     <Input
                                         type="password"
-                                        label="Access Key"
+                                        label="Password"
                                         placeholder="••••••••"
                                         value={formData.password}
                                         onChange={(e) => setFormData({ ...formData, password: e.target.value })}
@@ -193,7 +201,12 @@ export default function LoginPage() {
                                         <input type="checkbox" className="w-3.5 h-3.5 rounded bg-gray-100 dark:bg-slate-800 border-none text-primary-600" />
                                         <span>Remember Me</span>
                                     </label>
-                                    {/* <button type="button" className="hover:text-primary-600 transition-colors">Lost Key?</button> */}
+                                    <Link
+                                        href="/forgot-password"
+                                        className="hover:text-primary-600 transition-colors"
+                                    >
+                                        Lost Key?
+                                    </Link>
                                 </div>
 
                                 <div className="pt-4">
