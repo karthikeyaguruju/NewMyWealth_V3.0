@@ -109,7 +109,7 @@ export default function ReportsPage() {
                         animate={{ opacity: 1, x: 0 }}
                         className="flex items-center gap-3 bg-white dark:bg-white/5 p-1.5 rounded-2xl border border-gray-100 dark:border-white/10"
                     >
-                        <Button variant="ghost" size="icon" onClick={() => changeMonth(-1)} className="rounded-xl">
+                        <Button variant="ghost" size="sm" onClick={() => changeMonth(-1)} className="rounded-xl p-2">
                             <ChevronLeft size={20} />
                         </Button>
                         <div className="px-4 py-2 text-center min-w-[150px]">
@@ -117,7 +117,7 @@ export default function ReportsPage() {
                                 {date.toLocaleString('default', { month: 'long', year: 'numeric' })}
                             </span>
                         </div>
-                        <Button variant="ghost" size="icon" onClick={() => changeMonth(1)} className="rounded-xl">
+                        <Button variant="ghost" size="sm" onClick={() => changeMonth(1)} className="rounded-xl p-2">
                             <ChevronRight size={20} />
                         </Button>
                     </motion.div>
