@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, getServiceSupabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/db';
 
 /** Extract user from Supabase token */
 async function getUser(request: NextRequest) {
@@ -10,7 +11,7 @@ async function getUser(request: NextRequest) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-        console.error('Supabase Auth error:', error);
+        console.error('[Reports Summary] Auth error:', error);
         return null;
     }
     return user;
@@ -31,17 +32,19 @@ export async function GET(request: NextRequest) {
         const startDate = new Date(Date.UTC(year, month - 1, 1));
         const endDate = new Date(Date.UTC(year, month, 0, 23, 59, 59));
 
-        const supabaseService = getServiceSupabase();
-
-        // Fetch all transactions for the month
-        const { data: transactions, error } = await supabaseService
-            .from('transactions')
-            .select('*, categories(name, category_group)')
-            .eq('user_id', user.id)
-            .gte('date', startDate.toISOString())
-            .lte('date', endDate.toISOString());
-
-        if (error) throw error;
+        // Fetch all transactions for the month using Prisma
+        const transactions = await prisma.transaction.findMany({
+            where: {
+                userId: user.id,
+                date: {
+                    gte: startDate,
+                    lte: endDate
+                }
+            },
+            include: {
+                categoryRel: true
+            }
+        });
 
         // Initialize summary
         const summary = {
@@ -50,43 +53,77 @@ export async function GET(request: NextRequest) {
             totalInvestments: 0,
             netSavings: 0,
             categoryBreakdown: {} as Record<string, number>,
-            transactionCount: transactions?.length || 0,
+            transactionCount: transactions.length,
             topTransactions: [] as any[]
         };
 
-        (transactions || []).forEach(t => {
-            const amount = parseFloat(t.amount);
+        transactions.forEach(t => {
+            const amount = t.amount;
             const type = t.type.toLowerCase();
 
             if (type === 'income') {
                 summary.totalIncome += amount;
             } else if (type === 'expense') {
                 summary.totalExpenses += amount;
-                const catName = (t.categories as any)?.name || 'Uncategorized';
+                const catName = t.categoryRel?.name || t.category || 'Uncategorized';
                 summary.categoryBreakdown[catName] = (summary.categoryBreakdown[catName] || 0) + amount;
             } else if (type === 'investment') {
                 summary.totalInvestments += amount;
             }
         });
 
-        summary.netSavings = summary.totalIncome - summary.totalExpenses - summary.totalInvestments;
+        summary.netSavings = summary.totalIncome - summary.totalExpenses;
 
-        // Sort top transactions by amount
-        summary.topTransactions = [...(transactions || [])]
-            .sort((a, b) => b.amount - a.amount)
-            .slice(0, 5)
+        // --- NEW FUTURISTIC FEATURES ---
+
+        // 1. Financial Efficiency Score (0-100)
+        const savingsRate = summary.totalIncome > 0 ? (summary.netSavings / summary.totalIncome) * 100 : 0;
+        const efficiencyScore = Math.min(100, Math.max(0, savingsRate * 1.5));
+
+        // 2. Wealth Forecast
+        const monthlyContribution = summary.netSavings;
+        const projected1Year = monthlyContribution * 12 * 1.04;
+        const projected5Years = monthlyContribution * 60 * 1.25;
+
+        // 3. AI Insights
+        let primaryInsight = "Your financial health is stable.";
+        if (savingsRate > 30) {
+            primaryInsight = "Excellent! You are saving over 30% of your income. You are on the fast track to financial freedom.";
+        } else if (savingsRate < 10 && summary.totalIncome > 0) {
+            primaryInsight = "Warning: Your savings rate is low. Try to reduce discretionary expenses to build a safety net.";
+        }
+
+        const futuristData = {
+            efficiencyScore: Math.round(efficiencyScore),
+            projections: {
+                oneYear: Math.round(projected1Year),
+                fiveYears: Math.round(projected5Years),
+            },
+            aiInsights: [
+                primaryInsight,
+                summary.totalInvestments > 0 ? "Your investment diversification looks healthy." : "No investments recorded this month. Consider starting an SIP.",
+                summary.totalExpenses > summary.totalIncome ? "Critical: Expenses exceeded income this month." : "Success: You lived within your means."
+            ]
+        };
+
+        // 4. Detailed Transaction List for the Reports Table
+        const allTransactions = transactions
+            .sort((a, b) => b.date.getTime() - a.date.getTime())
             .map(t => ({
                 id: t.id,
                 amount: t.amount,
-                date: t.date,
-                notes: t.notes,
+                date: t.date.toISOString(),
+                notes: t.notes || 'No description',
                 type: t.type,
-                category: (t.categories as any)?.name || 'Uncategorized'
+                status: t.type.toLowerCase() === 'income' ? 'Credit' : 'Debit',
+                category: t.categoryRel?.name || t.category || 'Uncategorized',
+                categoryGroup: t.categoryRel?.categoryGroup || t.categoryGroup || 'General',
+                subCategory: t.subCategory || null,
             }));
 
-        return NextResponse.json(summary);
+        return NextResponse.json({ ...summary, allTransactions, ...futuristData });
     } catch (error) {
-        console.error('Report summary error:', error);
+        console.error('[Reports Summary API] Error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

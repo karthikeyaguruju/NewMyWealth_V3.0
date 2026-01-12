@@ -1,13 +1,19 @@
 // Activity Logs API route
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/jwt';
+import { supabase } from '@/lib/supabase';
 
 async function getUserId(request: NextRequest): Promise<string | null> {
     const token = request.cookies.get('token')?.value;
     if (!token) return null;
-    const decoded = await verifyToken(token);
-    return decoded?.userId || null;
+
+    try {
+        const { data: { user }, error } = await supabase.auth.getUser(token);
+        if (error || !user) return null;
+        return user.id;
+    } catch (error) {
+        return null;
+    }
 }
 
 // GET /api/activity-logs - Get recent activity logs for the user

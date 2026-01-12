@@ -1,16 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { verifyToken } from '@/lib/jwt';
+import { supabase } from '@/lib/supabase';
 
-async function getUserId(request: NextRequest): Promise<string | null> {
+/** Extract user from Supabase token */
+async function getUser(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
     if (!token) return null;
-    try {
-        const decoded = await verifyToken(token);
-        return decoded?.userId || null;
-    } catch (error) {
+
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+
+    if (error || !user) {
+        console.error('[Stocks Symbol API] Auth error:', error);
         return null;
     }
+    return user;
 }
 
 export async function DELETE(
@@ -18,8 +21,8 @@ export async function DELETE(
     { params }: { params: { symbol: string } }
 ) {
     try {
-        const userId = await getUserId(request);
-        if (!userId) {
+        const user = await getUser(request);
+        if (!user) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
 
@@ -28,7 +31,7 @@ export async function DELETE(
         // Delete all stocks with this symbol for this user
         const result = await prisma.stock.deleteMany({
             where: {
-                userId,
+                userId: user.id,
                 symbol: symbol.toUpperCase(),
             },
         });
@@ -38,7 +41,7 @@ export async function DELETE(
             count: result.count
         }, { status: 200 });
     } catch (error) {
-        console.error('Delete by symbol error:', error);
+        console.error('[Stocks Symbol API] DELETE Error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

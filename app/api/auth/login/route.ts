@@ -48,11 +48,12 @@ export async function POST(request: NextRequest) {
         // For simple migration, we'll set a basic cookie or let the frontend handle it.
         // But since your middleware expects a 'token', we'll set the access_token.
         if (session) {
+            // ENFORCING STRICT 10-MINUTE SESSION DURATION
             response.cookies.set('token', session.access_token, {
                 httpOnly: true,
                 secure: process.env.NODE_ENV === 'production',
                 sameSite: 'lax',
-                maxAge: session.expires_in,
+                maxAge: 600, // 10 minutes session life
                 path: '/',
             });
         }

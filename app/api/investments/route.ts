@@ -1,7 +1,7 @@
-// Investments API route
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, getServiceSupabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/db';
 import { startOfMonth, endOfMonth, subMonths, format } from 'date-fns';
 
 /** Extract user from Supabase token */
@@ -9,11 +9,14 @@ async function getUser(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
     if (!token) return null;
     const { data: { user }, error } = await supabase.auth.getUser(token);
-    if (error || !user) return null;
+    if (error || !user) {
+        console.error('[Investments API] Auth error:', error);
+        return null;
+    }
     return user;
 }
 
-// GET /api/investments - Get investment analytics
+// GET /api/investments - Get investment analytics using Prisma
 export async function GET(request: NextRequest) {
     try {
         const user = await getUser(request);
@@ -21,56 +24,53 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
         const userId = user.id;
-        const supabaseService = getServiceSupabase();
 
         const { searchParams } = new URL(request.url);
         const startDateStr = searchParams.get('startDate');
-        const endDateStr = searchParams.get('endDate');
 
-        // Get all investment transactions and stocks
-        // Joining with categories table to get the human-readable name
-        const { data: allInvestments, error: invError } = await supabaseService
-            .from('transactions')
-            .select('*, categories(name)')
-            .eq('user_id', userId)
-            .eq('type', 'investment')
-            .order('date', { ascending: true });
+        // 1. Fetch transactions and stocks via Prisma
+        const [allInvestments, allStocks] = await Promise.all([
+            prisma.transaction.findMany({
+                where: {
+                    userId,
+                    type: 'investment',
+                    status: { not: 'terminated' }
+                },
+                include: {
+                    categoryRel: true
+                },
+                orderBy: { date: 'asc' }
+            }),
+            prisma.stock.findMany({
+                where: { userId }
+            })
+        ]);
 
-        const { data: allStocks, error: stockError } = await supabaseService
-            .from('stocks')
-            .select('*')
-            .eq('user_id', userId);
-
-        if (invError || stockError) {
-            console.error('Database error:', invError || stockError);
-            throw invError || stockError;
-        }
-
-        const stocks = allStocks || [];
-        // Filter out terminated investments
-        const investments = (allInvestments || []).filter(t => t.status !== 'terminated');
-
-        // Group by category name (fetched from joint)
+        // 2. Aggregate category breakdown
         const byCategory: Record<string, number> = {};
-        investments.forEach((t) => {
-            const catName = t.categories?.name || t.category || 'Uncategorized';
-            byCategory[catName] = (byCategory[catName] || 0) + Number(t.amount);
+        allInvestments.forEach((t) => {
+            const catName = t.categoryRel?.name || t.category || 'Uncategorized';
+            byCategory[catName] = (byCategory[catName] || 0) + t.amount;
         });
 
-        // Group raw stock transactions by symbol to get active holdings
-        const stockHoldings = stocks.reduce((acc: any, stock: any) => {
+        // 3. Process Stock holdings (EQUITY)
+        const stockHoldings = allStocks.reduce((acc: any, stock: any) => {
             const symbol = stock.symbol.toUpperCase();
             if (!acc[symbol]) {
                 acc[symbol] = { quantity: 0, totalInvested: 0 };
             }
 
             if (stock.type === 'BUY') {
-                acc[symbol].quantity += Number(stock.quantity);
-                acc[symbol].totalInvested += (Number(stock.quantity) * Number(stock.buy_price));
+                acc[symbol].quantity += stock.quantity;
+                acc[symbol].totalInvested += (stock.quantity * stock.buyPrice);
             } else {
-                acc[symbol].quantity -= Number(stock.quantity);
-                const avgCost = acc[symbol].totalInvested / (acc[symbol].quantity + Number(stock.quantity));
-                acc[symbol].totalInvested -= (Number(stock.quantity) * (avgCost || 0));
+                // If it's a SELL, we reduce quantity and proportional cost basis
+                const prevQuantity = acc[symbol].quantity;
+                if (prevQuantity > 0) {
+                    const avgCost = acc[symbol].totalInvested / prevQuantity;
+                    acc[symbol].quantity -= stock.quantity;
+                    acc[symbol].totalInvested -= (stock.quantity * avgCost);
+                }
             }
             return acc;
         }, {});
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
         let totalStockInvested = 0;
         Object.values(stockHoldings).forEach((holding: any) => {
             if (holding.quantity > 0) {
-                totalStockInvested += holding.totalInvested;
+                totalStockInvested += Math.max(0, holding.totalInvested);
             }
         });
 
@@ -86,48 +86,40 @@ export async function GET(request: NextRequest) {
             byCategory['Equity Stocks'] = (byCategory['Equity Stocks'] || 0) + totalStockInvested;
         }
 
-        // Total invested (Transactions + Stocks)
+        // 4. Summaries
         const totalInvested = Object.values(byCategory).reduce((sum, amt) => sum + amt, 0);
-
         const categoryBreakdown = Object.entries(byCategory).map(([category, amount]) => ({
             category,
-            amount,
+            amount: Math.max(0, amount),
+        }));
+        const allocation = categoryBreakdown.map(item => ({
+            name: item.category,
+            value: item.amount
         }));
 
-        // Investment allocation for chart
-        const allocation = Object.entries(byCategory).map(([name, value]) => ({
-            name,
-            value,
-        }));
-
-        // Unified data for trends (Investments + Stock Transactions)
+        // 5. Monthly History
         const unifiedTransactions = [
-            ...investments.map(t => ({ date: new Date(t.date), amount: Number(t.amount) })),
-            ...stocks.map(s => ({
-                date: new Date(s.date || s.created_at),
-                amount: s.type === 'BUY' ? (Number(s.quantity) * Number(s.buy_price)) : -(Number(s.quantity) * (Number(s.sell_price) || Number(s.buy_price)))
+            ...allInvestments.map(t => ({ date: t.date, amount: t.amount })),
+            ...allStocks.map(s => ({
+                date: s.date || s.createdAt,
+                amount: s.type === 'BUY' ? (s.quantity * s.buyPrice) : -(s.quantity * (s.sellPrice || s.buyPrice))
             }))
         ];
 
-        // Determine historyMonths
         const today = new Date();
         let historyMonths = searchParams.get('historyMonths') ? parseInt(searchParams.get('historyMonths')!) : 6;
-
-        // If 'ALL' is requested, calculate months from the oldest transaction
         if (startDateStr === 'all' || searchParams.get('historyMonths') === 'ALL') {
             if (unifiedTransactions.length > 0) {
                 const oldestTx = unifiedTransactions.reduce((oldest, tx) =>
                     tx.date < oldest ? tx.date : oldest, new Date());
-                const monthsDiff = (today.getFullYear() - oldestTx.getFullYear()) * 12 + (today.getMonth() - oldestTx.getMonth());
-                historyMonths = Math.max(monthsDiff + 1, 12); // Minimum 12 months for 'ALL'
+                const monthsDiff = (today.getUTCFullYear() - oldestTx.getUTCFullYear()) * 12 + (today.getUTCMonth() - oldestTx.getUTCMonth());
+                historyMonths = Math.max(monthsDiff + 1, 12);
             } else {
                 historyMonths = 12;
             }
         }
 
         const monthlyData: any[] = [];
-
-        // Calculate this month's and last month's totals for growth
         const thisMonthStart = startOfMonth(today);
         const lastMonthDate = subMonths(today, 1);
         const lastMonthStart = startOfMonth(lastMonthDate);
@@ -141,67 +133,48 @@ export async function GET(request: NextRequest) {
             .filter(t => t.date >= lastMonthStart && t.date <= lastMonthEnd)
             .reduce((sum, t) => sum + t.amount, 0);
 
-        const monthlyGrowth = lastMonthTotal > 0
-            ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100
-            : 0;
-
-        // Get all unique categories
-        const allCategories = Object.keys(byCategory);
+        const monthlyGrowth = lastMonthTotal > 0 ? ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100 : 0;
 
         for (let i = historyMonths - 1; i >= 0; i--) {
-            const monthDate = subMonths(today, i);
-            const monthStart = startOfMonth(monthDate);
-            const monthEnd = endOfMonth(monthDate);
-            monthEnd.setHours(23, 59, 59, 999);
-            const monthLabel = format(monthDate, 'MMM yyyy');
+            const mDate = subMonths(today, i);
+            const mStart = startOfMonth(mDate);
+            const mEnd = endOfMonth(mDate);
+            const mLabel = format(mDate, 'MMM yyyy');
 
-            // Get investment transactions for this month grouped by category
-            const monthInvestments = investments.filter((t) => {
-                const txDate = new Date(t.date);
-                return txDate >= monthStart && txDate <= monthEnd;
+            const mInvestments = allInvestments.filter(t => t.date >= mStart && t.date <= mEnd);
+            const mStocks = allStocks.filter(s => {
+                const sDate = s.date || s.createdAt;
+                return sDate >= mStart && sDate <= mEnd && s.type === 'BUY';
             });
 
-            // Get stock purchases for this month
-            const monthStocks = stocks.filter((s: any) => {
-                if (!s.date && !s.created_at) return false;
-                const stockDate = new Date(s.date || s.created_at);
-                return stockDate >= monthStart && stockDate <= monthEnd && s.type === 'BUY';
+            const mCategoryBreakdown: Record<string, number> = {};
+            mInvestments.forEach(t => {
+                const catName = t.categoryRel?.name || t.category || 'Uncategorized';
+                mCategoryBreakdown[catName] = (mCategoryBreakdown[catName] || 0) + t.amount;
             });
-            const stocksAmount = monthStocks.reduce((sum: number, s: any) => sum + (Number(s.quantity) * Number(s.buy_price)), 0);
-
-            // Build category breakdown for this month
-            const monthCategoryBreakdown: Record<string, number> = {};
-            monthInvestments.forEach((t) => {
-                const catName = t.categories?.name || t.category || 'Uncategorized';
-                monthCategoryBreakdown[catName] = (monthCategoryBreakdown[catName] || 0) + Number(t.amount);
-            });
-            if (stocksAmount > 0) {
-                monthCategoryBreakdown['Equity Stocks'] = (monthCategoryBreakdown['Equity Stocks'] || 0) + stocksAmount;
-            }
-
-            const totalAmount = Object.values(monthCategoryBreakdown).reduce((sum, amt) => sum + amt, 0);
-            const count = monthInvestments.length + monthStocks.length;
+            const sAmount = mStocks.reduce((sum, s) => sum + (s.quantity * s.buyPrice), 0);
+            if (sAmount > 0) mCategoryBreakdown['Equity Stocks'] = (mCategoryBreakdown['Equity Stocks'] || 0) + sAmount;
 
             monthlyData.push({
-                month: monthLabel,
-                amount: Math.max(0, totalAmount),
-                count,
-                // Include category-wise amounts for stacked/grouped charts
-                ...monthCategoryBreakdown,
+                month: mLabel,
+                amount: Object.values(mCategoryBreakdown).reduce((sum, amt) => sum + amt, 0),
+                count: mInvestments.length + mStocks.length,
+                ...mCategoryBreakdown
             });
         }
 
         return NextResponse.json({
             totalInvested,
-            categoryCount: Object.keys(byCategory).length,
+            categoryCount: categoryBreakdown.length,
             monthlyGrowth,
             categoryBreakdown,
             allocation,
             monthlyData,
-            categories: allCategories, // Send category list for chart legend
+            categories: Object.keys(byCategory)
         }, { status: 200 });
+
     } catch (error) {
-        console.error('Get investments error:', error);
+        console.error('[Investments API] GET Error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

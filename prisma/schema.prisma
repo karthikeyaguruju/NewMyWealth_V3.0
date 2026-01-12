@@ -3,100 +3,107 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  id           String        @id @default(auto()) @map("_id") @db.ObjectId
+  id           String        @id @default(uuid())
   email        String        @unique
-  fullName     String
-  passwordHash String
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  categories   Category[]
-  transactions Transaction[]
+  fullName     String        @map("full_name")
+  passwordHash String        @map("password_hash")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
   budgets      Budget[]
+  categories   Category[]
   stocks       Stock[]
+  transactions Transaction[]
+
+  @@map("profiles")
 }
 
 model Stock {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  symbol      String   // E.g., AAPL, TSLA, RELIANCE
-  name        String   // E.g., Apple Inc.
-  quantity    Float
-  buyPrice    Float    // Average buying price
-  sellPrice   Float?   // Last selling price (if applicable)
-  currentPrice Float?  // Current market price (for valuation)
-  broker      String?  // E.g., Zerodha, Groww, Upstox
-  type        String   // BUY, SELL
-  date        DateTime? @default(now())
-  totalValue  Float?   // Derived or stored: quantity * bugPrice/currentPrice
-  userId      String   @db.ObjectId
-  user        User     @relation(fields: [userId], references: [id])
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id           String    @id @default(uuid())
+  symbol       String
+  name         String
+  quantity     Float
+  buyPrice     Float     @map("buy_price")
+  sellPrice    Float?    @map("sell_price")
+  currentPrice Float?    @map("current_price")
+  broker       String?
+  type         String
+  date         DateTime? @default(now())
+  totalValue   Float?    @map("total_value")
+  userId       String    @map("user_id")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+  user         User      @relation(fields: [userId], references: [id])
 
   @@index([userId])
+  @@map("stocks")
 }
 
 model Category {
-  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  id            String        @id @default(uuid())
   name          String
-  categoryGroup String // Income, Expense, Investment
-  isDefault     Boolean       @default(false)
-  userId        String        @db.ObjectId
+  categoryGroup String        @map("category_group")
+  isDefault     Boolean       @default(false) @map("is_default")
+  userId        String        @map("user_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+  budgets       Budget[]
   user          User          @relation(fields: [userId], references: [id])
   transactions  Transaction[]
-  budgets       Budget[]
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
 
   @@unique([userId, name, categoryGroup])
+  @@map("categories")
 }
 
 model Transaction {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  type          String // income, expense, investment
+  id            String    @id @default(uuid())
+  type          String
   amount        Float
   date          DateTime
   notes         String?
-  categoryGroup String
-  category      String
-  subCategory   String?
-  status        String   @default("active") // active, terminated (for FD/Bonds)
-  userId        String   @db.ObjectId
-  user          User     @relation(fields: [userId], references: [id])
-  categoryId    String?  @db.ObjectId
+  categoryGroup String?   @map("category_group")
+  category      String?
+  subCategory   String?   @map("sub_category")
+  status        String    @default("active")
+  userId        String    @map("user_id")
+  categoryId    String?   @map("category_id")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
   categoryRel   Category? @relation(fields: [categoryId], references: [id])
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  user          User      @relation(fields: [userId], references: [id])
 
   @@index([userId, date])
+  @@map("transactions")
 }
 
 model Budget {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  id         String   @id @default(uuid())
   amount     Float
-  month      String // Format: YYYY-MM
-  categoryId String   @db.ObjectId
+  month      String
+  categoryId String   @map("category_id")
+  userId     String   @map("user_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
   category   Category @relation(fields: [categoryId], references: [id])
-  userId     String   @db.ObjectId
   user       User     @relation(fields: [userId], references: [id])
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
 
   @@unique([userId, categoryId, month])
+  @@map("budgets")
 }
 
 model ActivityLog {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId      String   @db.ObjectId
-  action      String   // transaction_added, transaction_updated, transaction_deleted, investment_terminated, budget_set, etc.
-  description String   // Human-readable description
-  icon        String?  // Icon type: success, warning, info, error
-  metadata    Json?    // Extra details (amount, category, transactionId, etc.)
-  createdAt   DateTime @default(now())
+  id          String   @id @default(uuid())
+  userId      String   @map("user_id")
+  action      String
+  description String
+  icon        String?
+  metadata    Json?
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@index([userId, createdAt])
+  @@map("activity_logs")
 }

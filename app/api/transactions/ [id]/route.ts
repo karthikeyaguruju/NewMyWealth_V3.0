@@ -55,7 +55,7 @@ export async function PUT(
                 categoryGroup: validatedData.categoryGroup,
                 category: validatedData.category,
                 subCategory: validatedData.subCategory,
-                amount: parseFloat(validatedData.amount.toString()),
+                amount: validatedData.amount,
                 date: dateObject,
                 notes: validatedData.notes,
                 categoryId: validatedData.categoryId || null,

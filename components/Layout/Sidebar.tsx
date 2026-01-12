@@ -61,7 +61,7 @@ const mainItems = [
         icon: PieChart,
     },
     {
-        name: 'Monthly Reports',
+        name: 'Reports',
         href: '/reports',
         icon: FileText,
     },

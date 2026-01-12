@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopBar } from './TopBar';
+import { SessionTimeout } from '../Auth/SessionTimeout';
 
 interface DashboardLayoutProps {
     children: React.ReactNode;
@@ -13,6 +14,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
     return (
         <div className="flex h-screen overflow-hidden mesh-gradient-1 transition-colors duration-300">
+            <SessionTimeout />
             <Sidebar
                 isOpen={isMobileMenuOpen}
                 onClose={() => setIsMobileMenuOpen(false)}

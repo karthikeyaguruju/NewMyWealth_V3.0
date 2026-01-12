@@ -36,8 +36,18 @@ export async function middleware(request: NextRequest) {
             if (isPublicRoute) {
                 return NextResponse.redirect(new URL('/dashboard', request.url));
             }
-            // User is authenticated and on protected route, let them pass
-            return NextResponse.next();
+
+            // EXTEND SESSION: Implement sliding expiration (reset 10-minute timer)
+            // This ensures that as long as the user is active, they stay logged in.
+            const response = NextResponse.next();
+            response.cookies.set('token', token, {
+                httpOnly: true,
+                secure: process.env.NODE_ENV === 'production',
+                sameSite: 'lax',
+                maxAge: 600, // Extend for another 10 minutes
+                path: '/',
+            });
+            return response;
         }
     }
 

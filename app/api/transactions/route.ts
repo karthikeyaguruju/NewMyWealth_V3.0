@@ -1,7 +1,8 @@
-// Transactions API routes
+// Transactions API routes - Refactored to use Prisma
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, getServiceSupabase } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
+import { prisma } from '@/lib/db';
 import { transactionSchema } from '@/lib/validations';
 
 /** Extract user from Supabase token */
@@ -12,7 +13,7 @@ async function getUser(request: NextRequest) {
     const { data: { user }, error } = await supabase.auth.getUser(token);
 
     if (error || !user) {
-        console.error('Supabase Auth error:', error);
+        console.error('[Transactions API] Auth error:', error);
         return null;
     }
     return user;
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const type = searchParams.get('type');
-        const category = searchParams.get('category');
+        const category = searchParams.get('category'); // This can be name or ID, but frontend mostly sends it for filtering
         const startDateStr = searchParams.get('startDate');
         const endDateStr = searchParams.get('endDate');
         const minAmount = searchParams.get('minAmount');
@@ -42,52 +43,77 @@ export async function GET(request: NextRequest) {
         const limit = parseInt(searchParams.get('limit') || '10');
         const skip = (page - 1) * limit;
 
-        // Use service role to bypass RLS
-        const supabaseService = getServiceSupabase();
+        // Build Prisma where clause
+        const where: any = {
+            userId: user.id
+        };
 
-        // Build Supabase query
-        let query = supabaseService
-            .from('transactions')
-            .select('*, categories(name)', { count: 'exact' })
-            .eq('user_id', user.id);
+        if (type) where.type = type.toLowerCase();
 
+        if (category) {
+            where.OR = [
+                { category: { contains: category, mode: 'insensitive' } },
+                { categoryRel: { name: { contains: category, mode: 'insensitive' } } }
+            ];
+        }
 
-        if (type) query = query.eq('type', type);
-        // category in Postgres table is category_id (UUID), but frontend might send name.
-        // For simplicity, we filter by name if checking against categories table
-        if (category) query = query.ilike('notes', `%${category}%`); // Adjust based on your UI needs
+        if (startDateStr || endDateStr) {
+            where.date = {};
+            if (startDateStr) where.date.gte = new Date(startDateStr);
+            if (endDateStr) where.date.lte = new Date(endDateStr);
+        }
 
-        if (startDateStr) query = query.gte('date', startDateStr);
-        if (endDateStr) query = query.lte('date', endDateStr);
-        if (minAmount) query = query.gte('amount', parseFloat(minAmount));
-        if (maxAmount) query = query.lte('amount', parseFloat(maxAmount));
-        if (description) query = query.ilike('notes', `%${description}%`);
+        if (minAmount || maxAmount) {
+            where.amount = {};
+            if (minAmount) where.amount.gte = parseFloat(minAmount);
+            if (maxAmount) where.amount.lte = parseFloat(maxAmount);
+        }
 
-        // Order and Pagination
-        const { data: transactions, count, error } = await query
-            .order(sortBy, { ascending: order === 'asc' })
-            .range(skip, skip + limit - 1);
+        if (description) {
+            where.notes = { contains: description, mode: 'insensitive' };
+        }
 
-        if (error) throw error;
+        // Fetch counts and data using Prisma
+        const [totalCount, transactions] = await Promise.all([
+            prisma.transaction.count({ where }),
+            prisma.transaction.findMany({
+                where,
+                include: {
+                    categoryRel: true
+                },
+                orderBy: {
+                    [sortBy]: order
+                },
+                skip,
+                take: limit
+            })
+        ]);
 
-        // Map Supabase fields to frontend fields
-        const mappedTransactions = (transactions || []).map(t => ({
-            ...t,
-            category: (t.categories as { name: string } | null)?.name || 'Uncategorized',
+        // Map Prisma results to frontend format
+        const mappedTransactions = transactions.map(t => ({
+            id: t.id,
+            amount: t.amount,
+            date: t.date.toISOString(),
+            type: t.type,
+            notes: t.notes,
+            category: t.categoryRel?.name || t.category || 'Uncategorized',
+            categoryId: t.categoryId,
+            categoryGroup: t.categoryGroup,
+            status: t.status,
             description: t.notes || ''
         }));
 
         return NextResponse.json({
             transactions: mappedTransactions,
             pagination: {
-                total: count || 0,
-                pages: Math.ceil((count || 0) / limit),
+                total: totalCount,
+                pages: Math.ceil(totalCount / limit),
                 page,
                 limit
             },
         }, { status: 200 });
     } catch (error) {
-        console.error('Get transactions error:', error);
+        console.error('[Transactions API] GET Error:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -103,31 +129,37 @@ export async function POST(request: NextRequest) {
         const body = await request.json();
         const validatedData = transactionSchema.parse(body);
 
-        // Convert date string (YYYY-MM-DD) to ISO format
+        // Date handling
         const [year, month, day] = validatedData.date.split('-').map(Number);
         const dateObject = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
 
-        // Use service role to bypass RLS
-        const supabaseService = getServiceSupabase();
-
-        const { data: transaction, error } = await supabaseService
-            .from('transactions')
-            .insert({
-                user_id: user.id,
+        // Create transaction using Prisma
+        const transaction = await prisma.transaction.create({
+            data: {
+                userId: user.id,
                 type: validatedData.type.toLowerCase(),
                 amount: validatedData.amount,
-                date: dateObject.toISOString(),
+                date: dateObject,
                 notes: validatedData.notes,
-                category_id: validatedData.categoryId || null,
-            })
-            .select()
-            .single();
+                categoryId: validatedData.categoryId || null,
+                // Optional: sync category info
+                category: validatedData.category || null,
+                categoryGroup: validatedData.categoryGroup || null,
+            },
+            include: {
+                categoryRel: true
+            }
+        });
 
-        if (error) throw error;
-
-        return NextResponse.json({ transaction }, { status: 201 });
+        return NextResponse.json({
+            transaction: {
+                ...transaction,
+                date: transaction.date.toISOString(),
+                category: transaction.categoryRel?.name || transaction.category || 'Uncategorized'
+            }
+        }, { status: 201 });
     } catch (error: any) {
-        console.error('Create transaction error:', error);
+        console.error('[Transactions API] POST Error:', error);
         if (error.name === 'ZodError') {
             return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
         }
