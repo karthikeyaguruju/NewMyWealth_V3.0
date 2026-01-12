@@ -41,7 +41,7 @@ export async function POST(
 
         // Check if it's a terminable category (Fixed Deposits or Bonds)
         const terminableCategories = ['Fixed Deposits', 'Bonds'];
-        if (!terminableCategories.includes(investment.category)) {
+        if (!investment.category || !terminableCategories.includes(investment.category)) {
             return NextResponse.json({
                 error: 'Only Fixed Deposits and Bonds can be terminated'
             }, { status: 400 });
