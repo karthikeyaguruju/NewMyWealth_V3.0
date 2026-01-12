@@ -2,6 +2,7 @@
 // This helper can be used in API routes to log user activities
 
 import { prisma } from '@/lib/db';
+import { Prisma } from '@prisma/client';
 
 export interface ActivityLogData {
     userId: string;
@@ -23,7 +24,7 @@ export async function logActivity(data: ActivityLogData): Promise<void> {
                 action: data.action,
                 description: data.description,
                 icon: data.icon || 'info',
-                metadata: data.metadata || null,
+                metadata: data.metadata ?? Prisma.JsonNull,
             },
         });
     } catch (error) {
