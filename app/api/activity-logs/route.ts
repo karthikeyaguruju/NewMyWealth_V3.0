@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 // Activity Logs API route
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
