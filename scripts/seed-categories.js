@@ -32,7 +32,7 @@ const DEFAULT_CATEGORIES = {
         'Cryptocurrency',
         'Gold',
         'Bonds',
-        'Fixed Deposit',
+        'Fixed Deposits',
         'PPF',
         'Other Investments'
     ]

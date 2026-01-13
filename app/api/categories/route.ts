@@ -28,33 +28,54 @@ export async function GET(request: NextRequest) {
         const categoryGroup = searchParams.get('categoryGroup');
 
         // 1. Ensure profile exists - Using Prisma
-        const profile = await prisma.user.findUnique({
-            where: { id: user.id }
-        });
+        let profile;
+        try {
+            profile = await prisma.user.findUnique({
+                where: { id: user.id }
+            });
+        } catch (dbError: any) {
+            console.error('[Categories API] Prisma User Lookup Error:', dbError);
+            // This is likely a DATABASE_URL or connection issue on Vercel
+            return NextResponse.json({
+                error: 'Database connection error',
+                details: dbError.message,
+                code: 'DB_CONNECTION_ERROR'
+            }, { status: 500 });
+        }
 
         if (!profile) {
             console.log(`[Categories API] Creating missing profile for ${user.id}`);
-            await prisma.user.create({
-                data: {
-                    id: user.id,
-                    email: user.email || '',
-                    fullName: user.user_metadata?.full_name || 'User',
-                    passwordHash: 'managed_by_supabase_auth'
-                }
-            });
+            try {
+                await prisma.user.create({
+                    data: {
+                        id: user.id,
+                        email: user.email || '',
+                        fullName: user.user_metadata?.full_name || 'User',
+                        passwordHash: 'managed_by_supabase_auth'
+                    }
+                });
+            } catch (createError: any) {
+                console.error('[Categories API] Profile Creation Error:', createError);
+            }
         }
 
         // 2. Fetch or Seed Categories
-        let categories = await prisma.category.findMany({
-            where: {
-                userId: user.id,
-                ...(categoryGroup ? { categoryGroup } : {})
-            },
-            orderBy: [
-                { isDefault: 'desc' },
-                { name: 'asc' }
-            ]
-        });
+        let categories = [];
+        try {
+            categories = await prisma.category.findMany({
+                where: {
+                    userId: user.id,
+                    ...(categoryGroup ? { categoryGroup } : {})
+                },
+                orderBy: [
+                    { isDefault: 'desc' },
+                    { name: 'asc' }
+                ]
+            });
+        } catch (fetchError: any) {
+            console.error('[Categories API] Fetch Categories Error:', fetchError);
+            return NextResponse.json({ error: 'Failed to fetch categories' }, { status: 500 });
+        }
 
         // 3. AUTO-SEED: If the user has 0 categories total, seed default ones
         const totalCount = await prisma.category.count({
@@ -69,6 +90,8 @@ export async function GET(request: NextRequest) {
                 { name: 'Salary', categoryGroup: 'Income', isDefault: true, userId: user.id },
                 { name: 'Freelancing', categoryGroup: 'Income', isDefault: true, userId: user.id },
                 { name: 'Investment Returns', categoryGroup: 'Income', isDefault: true, userId: user.id },
+                { name: 'Rental Income', categoryGroup: 'Income', isDefault: true, userId: user.id },
+                { name: 'Business', categoryGroup: 'Income', isDefault: true, userId: user.id },
 
                 // Expense
                 { name: 'Entertainment', categoryGroup: 'Expense', isDefault: true, userId: user.id },
@@ -80,6 +103,8 @@ export async function GET(request: NextRequest) {
                 { name: 'Utilities', categoryGroup: 'Expense', isDefault: true, userId: user.id },
                 { name: 'Insurance', categoryGroup: 'Expense', isDefault: true, userId: user.id },
                 { name: 'Investment Out', categoryGroup: 'Expense', isDefault: true, userId: user.id },
+                { name: 'Education', categoryGroup: 'Expense', isDefault: true, userId: user.id },
+                { name: 'Travel', categoryGroup: 'Expense', isDefault: true, userId: user.id },
 
                 // Investment
                 { name: 'Stocks', categoryGroup: 'Investment', isDefault: true, userId: user.id },
@@ -89,11 +114,13 @@ export async function GET(request: NextRequest) {
                 { name: 'Gold', categoryGroup: 'Investment', isDefault: true, userId: user.id },
                 { name: 'Bonds', categoryGroup: 'Investment', isDefault: true, userId: user.id },
                 { name: 'Fixed Deposits', categoryGroup: 'Investment', isDefault: true, userId: user.id },
+                { name: 'PPF', categoryGroup: 'Investment', isDefault: true, userId: user.id },
             ];
 
             // Use createMany for efficiency (Postgres supports this)
             await prisma.category.createMany({
-                data: defaultCategories
+                data: defaultCategories,
+                skipDuplicates: true
             });
 
             // Re-fetch after seeding (respecting filter)
@@ -111,9 +138,12 @@ export async function GET(request: NextRequest) {
 
         return NextResponse.json({ categories }, { status: 200 });
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('[Categories API] Global Error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal server error',
+            details: error.message
+        }, { status: 500 });
     }
 }
 

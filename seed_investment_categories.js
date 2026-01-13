@@ -14,10 +14,11 @@ async function main() {
         const categories = [
             'Mutual Funds',
             'Stocks',
-            'Fixed Deposit',
+            'Fixed Deposits',
             'Real Estate',
             'Gold',
-            'Crypto'
+            'Crypto',
+            'Bonds'
         ];
 
         for (const name of categories) {

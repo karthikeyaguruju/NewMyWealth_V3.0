@@ -112,9 +112,12 @@ export async function GET(request: NextRequest) {
                 limit
             },
         }, { status: 200 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[Transactions API] GET Error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal server error',
+            details: error.message
+        }, { status: 500 });
     }
 }
 
@@ -163,6 +166,9 @@ export async function POST(request: NextRequest) {
         if (error.name === 'ZodError') {
             return NextResponse.json({ error: 'Validation failed', details: error.errors }, { status: 400 });
         }
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal server error',
+            details: error.message
+        }, { status: 500 });
     }
 }
