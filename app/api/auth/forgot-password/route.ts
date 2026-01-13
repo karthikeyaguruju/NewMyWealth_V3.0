@@ -1,44 +1,45 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mail';
 
 export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { email } = body;
+  try {
+    const body = await request.json();
+    const { email } = body;
 
-        if (!email) {
-            console.log('Forgot password request: Email is missing.');
-            return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-        }
+    if (!email) {
+      console.log('Forgot password request: Email is missing.');
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
 
-        const supabaseService = getServiceSupabase();
-        console.log(`Starting Password Recovery for: ${email}`);
+    const supabaseService = getServiceSupabase();
+    console.log(`Starting Password Recovery for: ${email}`);
 
-        // 1. Generate the recovery link manually
-        console.log('Attempting to generate recovery link...');
-        const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
-            type: 'recovery',
-            email: email,
-            options: {
-                redirectTo: `${new URL(request.url).origin}/reset-password`
-            }
-        });
+    // 1. Generate the recovery link manually
+    console.log('Attempting to generate recovery link...');
+    const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
+      type: 'recovery',
+      email: email,
+      options: {
+        redirectTo: `${new URL(request.url).origin}/reset-password`
+      }
+    });
 
-        if (linkError) {
-            console.error('Recovery link generation error:', linkError.message);
-            return NextResponse.json({ error: linkError.message }, { status: 400 });
-        }
+    if (linkError) {
+      console.error('Recovery link generation error:', linkError.message);
+      return NextResponse.json({ error: linkError.message }, { status: 400 });
+    }
 
-        const recoveryLink = linkData.properties.action_link;
-        console.log('Recovery link generated successfully.');
+    const recoveryLink = linkData.properties.action_link;
+    console.log('Recovery link generated successfully.');
 
-        // 2. Send the link via Nodemailer (Gmail)
-        console.log(`Transmitting Recovery email to ${email} via Nodemailer...`);
-        const { success, error: mailError } = await sendEmail({
-            to: email,
-            subject: 'Password reset requested for your My Wealth account',
-            html: `
+    // 2. Send the link via Nodemailer (Gmail)
+    console.log(`Transmitting Recovery email to ${email} via Nodemailer...`);
+    const { success, error: mailError } = await sendEmail({
+      to: email,
+      subject: 'Password reset requested for your My Wealth account',
+      html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -217,17 +218,17 @@ export async function POST(request: NextRequest) {
 </body>
 </html>
             `
-        });
+    });
 
-        if (!success) {
-            console.error('Recovery Email transmission error:', mailError);
-            return NextResponse.json({ error: 'Failed to transmit email' }, { status: 500 });
-        }
-
-        console.log('Recovery email transmitted successfully');
-        return NextResponse.json({ message: 'Magic link transmitted successfully' }, { status: 200 });
-    } catch (error) {
-        console.error('Forgot password error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (!success) {
+      console.error('Recovery Email transmission error:', mailError);
+      return NextResponse.json({ error: 'Failed to transmit email' }, { status: 500 });
     }
+
+    console.log('Recovery email transmitted successfully');
+    return NextResponse.json({ message: 'Magic link transmitted successfully' }, { status: 200 });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

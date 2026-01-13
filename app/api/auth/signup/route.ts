@@ -1,64 +1,65 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { signupSchema } from '@/lib/validations';
 import { sendEmail } from '@/lib/mail';
 
 export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const validation = signupSchema.safeParse(body);
+  try {
+    const body = await request.json();
+    const validation = signupSchema.safeParse(body);
 
-        if (!validation.success) {
-            return NextResponse.json(
-                { error: validation.error.errors[0].message },
-                { status: 400 }
-            );
-        }
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error.errors[0].message },
+        { status: 400 }
+      );
+    }
 
-        const { fullName, email, password } = validation.data;
-        const supabaseService = getServiceSupabase();
-        console.log(`Starting Signup process for: ${email}`);
+    const { fullName, email, password } = validation.data;
+    const supabaseService = getServiceSupabase();
+    console.log(`Starting Signup process for: ${email}`);
 
-        // 1. Create user in Supabase Auth via Admin API
-        const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
-            email,
-            password,
-            email_confirm: false,
-            user_metadata: { full_name: fullName }
-        });
+    // 1. Create user in Supabase Auth via Admin API
+    const { data: authData, error: authError } = await supabaseService.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: false,
+      user_metadata: { full_name: fullName }
+    });
 
-        if (authError) {
-            console.error('Supabase Admin CreateUser Error:', authError.message);
-            return NextResponse.json({ error: authError.message }, { status: 400 });
-        }
+    if (authError) {
+      console.error('Supabase Admin CreateUser Error:', authError.message);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
+    }
 
-        const user = authData.user;
-        if (!user) {
-            console.error('User creation returned empty data');
-            return NextResponse.json({ error: 'User creation failed' }, { status: 500 });
-        }
-        console.log(`User created successfully in Auth: ${user.id}`);
+    const user = authData.user;
+    if (!user) {
+      console.error('User creation returned empty data');
+      return NextResponse.json({ error: 'User creation failed' }, { status: 500 });
+    }
+    console.log(`User created successfully in Auth: ${user.id}`);
 
-        // 2. Generate the verification link manually
-        const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
-            type: 'signup',
-            email: email,
-            password: password,
-            options: {
-                redirectTo: `${new URL(request.url).origin}/login`
-            }
-        });
+    // 2. Generate the verification link manually
+    const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
+      type: 'signup',
+      email: email,
+      password: password,
+      options: {
+        redirectTo: `${new URL(request.url).origin}/login`
+      }
+    });
 
-        if (!linkError && linkData?.properties?.action_link) {
-            const verificationLink = linkData.properties.action_link;
-            console.log('Signup verification link generated successfully.');
+    if (!linkError && linkData?.properties?.action_link) {
+      const verificationLink = linkData.properties.action_link;
+      console.log('Signup verification link generated successfully.');
 
-            // 3. Send the link via Nodemailer (Gmail)
-            console.log(`Transmitting Welcome email to ${email} via Nodemailer...`);
-            const { success, error: mailError } = await sendEmail({
-                to: email,
-                subject: 'Activate your My Wealth account and start tracking smarter',
-                html: `
+      // 3. Send the link via Nodemailer (Gmail)
+      console.log(`Transmitting Welcome email to ${email} via Nodemailer...`);
+      const { success, error: mailError } = await sendEmail({
+        to: email,
+        subject: 'Activate your My Wealth account and start tracking smarter',
+        html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -226,70 +227,70 @@ export async function POST(request: NextRequest) {
 </body>
 </html>
                 `
-            });
+      });
 
-            if (!success) {
-                console.error('Signup Email transmission error:', mailError);
-            } else {
-                console.log('Signup Welcome email transmitted successfully');
-            }
-        } else {
-            console.error('Signup link generation failed:', linkError?.message);
-        }
-
-        // 4. Create Profile
-        const { error: profileError } = await supabaseService
-            .from('profiles')
-            .upsert({ id: user.id, full_name: fullName });
-
-        if (profileError) {
-            console.error('Profile creation error:', profileError);
-        }
-
-        // 5. Seed default categories
-        const defaultCategories = [
-            // Income
-            { name: 'Salary', category_group: 'Income', is_default: true, user_id: user.id },
-            { name: 'Freelancing', category_group: 'Income', is_default: true, user_id: user.id },
-            { name: 'Investment Returns', category_group: 'Income', is_default: true, user_id: user.id },
-
-            // Expense
-            { name: 'Rent', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Groceries', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Utilities', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Entertainment', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Transportation', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Healthcare', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Insurance', category_group: 'Expense', is_default: true, user_id: user.id },
-            { name: 'Investment Out', category_group: 'Expense', is_default: true, user_id: user.id },
-
-            // Investment
-            { name: 'Stocks', category_group: 'Investment', is_default: true, user_id: user.id },
-            { name: 'Mutual Funds', category_group: 'Investment', is_default: true, user_id: user.id },
-            { name: 'Real Estate', category_group: 'Investment', is_default: true, user_id: user.id },
-            { name: 'Crypto', category_group: 'Investment', is_default: true, user_id: user.id },
-            { name: 'Gold', category_group: 'Investment', is_default: true, user_id: user.id },
-            { name: 'Bonds', category_group: 'Investment', is_default: true, user_id: user.id },
-            { name: 'Fixed Deposits', category_group: 'Investment', is_default: true, user_id: user.id },
-        ];
-
-        const { error: categoryError } = await supabaseService
-            .from('categories')
-            .insert(defaultCategories);
-
-        if (categoryError) {
-            console.error('Category seeding error:', categoryError);
-        }
-
-        return NextResponse.json(
-            { message: 'User created successfully. Verification email sent.' },
-            { status: 201 }
-        );
-    } catch (error) {
-        console.error('Signup error:', error);
-        return NextResponse.json(
-            { error: 'Internal server error' },
-            { status: 500 }
-        );
+      if (!success) {
+        console.error('Signup Email transmission error:', mailError);
+      } else {
+        console.log('Signup Welcome email transmitted successfully');
+      }
+    } else {
+      console.error('Signup link generation failed:', linkError?.message);
     }
+
+    // 4. Create Profile
+    const { error: profileError } = await supabaseService
+      .from('profiles')
+      .upsert({ id: user.id, full_name: fullName });
+
+    if (profileError) {
+      console.error('Profile creation error:', profileError);
+    }
+
+    // 5. Seed default categories
+    const defaultCategories = [
+      // Income
+      { name: 'Salary', category_group: 'Income', is_default: true, user_id: user.id },
+      { name: 'Freelancing', category_group: 'Income', is_default: true, user_id: user.id },
+      { name: 'Investment Returns', category_group: 'Income', is_default: true, user_id: user.id },
+
+      // Expense
+      { name: 'Rent', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Groceries', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Utilities', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Entertainment', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Transportation', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Healthcare', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Insurance', category_group: 'Expense', is_default: true, user_id: user.id },
+      { name: 'Investment Out', category_group: 'Expense', is_default: true, user_id: user.id },
+
+      // Investment
+      { name: 'Stocks', category_group: 'Investment', is_default: true, user_id: user.id },
+      { name: 'Mutual Funds', category_group: 'Investment', is_default: true, user_id: user.id },
+      { name: 'Real Estate', category_group: 'Investment', is_default: true, user_id: user.id },
+      { name: 'Crypto', category_group: 'Investment', is_default: true, user_id: user.id },
+      { name: 'Gold', category_group: 'Investment', is_default: true, user_id: user.id },
+      { name: 'Bonds', category_group: 'Investment', is_default: true, user_id: user.id },
+      { name: 'Fixed Deposits', category_group: 'Investment', is_default: true, user_id: user.id },
+    ];
+
+    const { error: categoryError } = await supabaseService
+      .from('categories')
+      .insert(defaultCategories);
+
+    if (categoryError) {
+      console.error('Category seeding error:', categoryError);
+    }
+
+    return NextResponse.json(
+      { message: 'User created successfully. Verification email sent.' },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('Signup error:', error);
+    return NextResponse.json(
+      { error: 'Internal server error' },
+      { status: 500 }
+    );
+  }
 }

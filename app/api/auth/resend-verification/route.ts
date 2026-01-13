@@ -1,41 +1,42 @@
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { sendEmail } from '@/lib/mail';
 
 export async function POST(request: NextRequest) {
-    try {
-        const body = await request.json();
-        const { email } = body;
+  try {
+    const body = await request.json();
+    const { email } = body;
 
-        if (!email) {
-            return NextResponse.json({ error: 'Email is required' }, { status: 400 });
-        }
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+    }
 
-        const supabaseService = getServiceSupabase();
+    const supabaseService = getServiceSupabase();
 
-        // 1. Generate the signup/verification link manually
-        const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
-            type: 'magiclink',
-            email: email,
-            options: {
-                redirectTo: `${new URL(request.url).origin}/login`
-            }
-        });
+    // 1. Generate the signup/verification link manually
+    const { data: linkData, error: linkError } = await supabaseService.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+      options: {
+        redirectTo: `${new URL(request.url).origin}/login`
+      }
+    });
 
-        if (linkError) {
-            console.error('Link generation error:', linkError.message);
-            return NextResponse.json({ error: linkError.message }, { status: 400 });
-        }
+    if (linkError) {
+      console.error('Link generation error:', linkError.message);
+      return NextResponse.json({ error: linkError.message }, { status: 400 });
+    }
 
-        const verificationLink = linkData.properties.action_link;
-        console.log('Verification link generated successfully');
+    const verificationLink = linkData.properties.action_link;
+    console.log('Verification link generated successfully');
 
-        // 2. Send the link via Nodemailer (Gmail)
-        console.log(`Attempting to send verification email to ${email} via Nodemailer...`);
-        const { success, error: mailError } = await sendEmail({
-            to: email,
-            subject: 'Verify your access | My Wealth',
-            html: `
+    // 2. Send the link via Nodemailer (Gmail)
+    console.log(`Attempting to send verification email to ${email} via Nodemailer...`);
+    const { success, error: mailError } = await sendEmail({
+      to: email,
+      subject: 'Verify your access | My Wealth',
+      html: `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -83,17 +84,17 @@ export async function POST(request: NextRequest) {
 </body>
 </html>
             `
-        });
+    });
 
-        if (!success) {
-            console.error('Nodemailer transmission error:', mailError);
-            return NextResponse.json({ error: 'Failed to transmit email' }, { status: 500 });
-        }
-
-        console.log('Verification email transmitted successfully');
-        return NextResponse.json({ message: 'Verification email resent successfully' });
-    } catch (error) {
-        console.error('Email verification error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    if (!success) {
+      console.error('Nodemailer transmission error:', mailError);
+      return NextResponse.json({ error: 'Failed to transmit email' }, { status: 500 });
     }
+
+    console.log('Verification email transmitted successfully');
+    return NextResponse.json({ message: 'Verification email resent successfully' });
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
 }

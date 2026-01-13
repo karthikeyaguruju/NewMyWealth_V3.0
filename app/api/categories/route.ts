@@ -167,6 +167,23 @@ export async function POST(request: NextRequest) {
             );
         }
 
+        // Ensure user profile exists before creating category
+        try {
+            await prisma.user.upsert({
+                where: { id: user.id },
+                update: {},
+                create: {
+                    id: user.id,
+                    email: user.email || '',
+                    fullName: user.user_metadata?.full_name || 'User',
+                    passwordHash: 'managed_by_supabase_auth'
+                }
+            });
+        } catch (upsertError: any) {
+            console.error('[Categories API] User Upsert Error:', upsertError);
+            // Non-blocking for now, but logged
+        }
+
         // Normalize capitalization
         const normalizedGroup = categoryGroup.charAt(0).toUpperCase() + categoryGroup.slice(1).toLowerCase();
         const validGroups = ['Income', 'Expense', 'Investment'];
@@ -182,8 +199,11 @@ export async function POST(request: NextRequest) {
         });
 
         return NextResponse.json({ category }, { status: 201 });
-    } catch (error) {
+    } catch (error: any) {
         console.error('[Categories API] POST Error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({
+            error: 'Internal server error',
+            details: error.message
+        }, { status: 500 });
     }
 }

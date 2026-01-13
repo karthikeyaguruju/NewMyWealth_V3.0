@@ -3,6 +3,7 @@
 // 1. Add "Fixed Deposits" to Investment category for all users who don't have it
 // 2. Rename "Investments" to "Investment Returns" in Income category for all users
 
+export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { verifyToken } from '@/lib/jwt';
