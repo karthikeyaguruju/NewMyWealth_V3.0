@@ -33,6 +33,8 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { format } from 'date-fns';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Transaction {
     id: string;
@@ -127,6 +129,102 @@ export default function ReportsPage() {
         const newDate = new Date(date);
         newDate.setMonth(newDate.getMonth() + offset);
         setDate(newDate);
+    };
+
+    const handleDownloadPDF = () => {
+        if (!summary) return;
+
+        const doc = new jsPDF();
+        const monthYear = format(date, 'MMMM yyyy');
+
+        // Header
+        doc.setFontSize(22);
+        doc.setTextColor(37, 99, 235); // primary-600
+        doc.text('Intelligence Report', 14, 20);
+
+        doc.setFontSize(12);
+        doc.setTextColor(100);
+        doc.text(`Period: ${monthYear}`, 14, 30);
+        doc.text(`Generated on: ${format(new Date(), 'PPP')}`, 14, 35);
+
+        // Stats Summary
+        doc.setFontSize(16);
+        doc.setTextColor(0);
+        doc.text('Key Metrics', 14, 50);
+
+        const stats = [
+            ['Total Income', `INR ${summary.totalIncome.toLocaleString()}`],
+            ['Total Expenses', `INR ${summary.totalExpenses.toLocaleString()}`],
+            ['Investments', `INR ${summary.totalInvestments.toLocaleString()}`],
+            ['Net Savings', `INR ${(summary.totalIncome - summary.totalExpenses).toLocaleString()}`],
+            ['Efficiency Score', `${summary.efficiencyScore}%`]
+        ];
+
+        autoTable(doc, {
+            startY: 55,
+            head: [['Metric', 'Value']],
+            body: stats,
+            theme: 'striped',
+            headStyles: { fillColor: [37, 99, 235], fontStyle: 'bold' },
+            styles: { fontSize: 10 },
+        });
+
+        // Transactions Table
+        const currentY = (doc as any).lastAutoTable.finalY + 15;
+        doc.setFontSize(16);
+        doc.text('Transaction Ledger', 14, currentY);
+
+        const tableData = summary.allTransactions.map(tx => [
+            format(new Date(tx.date), 'dd MMM yyyy'),
+            tx.notes,
+            tx.category,
+            tx.status,
+            `INR ${tx.amount.toLocaleString()}`
+        ]);
+
+        autoTable(doc, {
+            startY: currentY + 5,
+            head: [['Date', 'Description', 'Category', 'Status', 'Amount']],
+            body: tableData,
+            theme: 'grid',
+            headStyles: { fillColor: [31, 41, 55], fontStyle: 'bold' },
+            styles: { fontSize: 9 },
+            columnStyles: {
+                4: { halign: 'right' }
+            }
+        });
+
+        doc.save(`MyWealth_Report_${monthYear.replace(' ', '_')}.pdf`);
+        toast.success('Intelligence Report Downloaded!');
+    };
+
+    const handleSendEmail = async () => {
+        if (!summary) return;
+        setSending(true);
+        const loadingToast = toast.loading('Dispatching your intelligence report...');
+        try {
+            const res = await fetch('/api/reports/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    summary,
+                    monthName: format(date, 'MMMM'),
+                    year: date.getFullYear()
+                })
+            });
+
+            if (res.ok) {
+                toast.success('Report dispatched to your email!', { id: loadingToast });
+            } else {
+                const errorData = await res.json();
+                throw new Error(errorData.error || 'Failed to send email');
+            }
+        } catch (error: any) {
+            console.error('Send email error:', error);
+            toast.error(`Dispatch failed: ${error.message}`, { id: loadingToast });
+        } finally {
+            setSending(false);
+        }
     };
 
     return (
@@ -361,6 +459,28 @@ export default function ReportsPage() {
                                             )}
                                         </tbody>
                                     </table>
+                                </div>
+                                <div className="p-8 border-t border-gray-100 dark:border-white/10 flex flex-wrap gap-4 items-center justify-end bg-gray-50/50 dark:bg-white/5">
+                                    <Button
+                                        onClick={handleDownloadPDF}
+                                        variant="outline"
+                                        className="h-12 px-6 rounded-2xl font-black transition-all flex items-center gap-2 border-2 border-primary-600 text-primary-600 hover:bg-primary-600 hover:text-white active:scale-95"
+                                    >
+                                        <Download size={18} />
+                                        Download at the PDF
+                                    </Button>
+                                    <Button
+                                        onClick={handleSendEmail}
+                                        disabled={sending}
+                                        className="h-12 px-6 rounded-2xl font-black transition-all flex items-center gap-2 bg-primary-600 text-white hover:bg-primary-700 active:scale-95 shadow-lg shadow-primary-600/20 disabled:opacity-50"
+                                    >
+                                        {sending ? (
+                                            <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                        ) : (
+                                            <Mail size={18} />
+                                        )}
+                                        Data will send into mail
+                                    </Button>
                                 </div>
                             </Card>
 

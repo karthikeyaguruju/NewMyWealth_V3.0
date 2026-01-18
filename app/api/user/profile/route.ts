@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, getServiceSupabase } from '@/lib/supabase';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 // Helper to get user via Supabase token
 async function getUser(request: NextRequest) {
@@ -59,7 +60,19 @@ export async function PUT(request: NextRequest) {
 
         if (profileError) throw profileError;
 
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.PROFILE_UPDATED,
+            description: `Updated profile name to ${fullName}`,
+            icon: 'info',
+            metadata: {
+                fullName
+            }
+        });
+
         return NextResponse.json({
+
             user: {
                 id: user.id,
                 email: user.email,

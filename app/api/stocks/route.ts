@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { stockSchema } from '@/lib/validations';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 async function getUser(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
@@ -109,6 +110,22 @@ export async function POST(request: NextRequest) {
                 broker: validatedData.broker,
                 type: validatedData.type.toUpperCase(),
                 date: validatedData.date ? new Date(validatedData.date) : new Date()
+            }
+        });
+
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.INVESTMENT_ADDED,
+            description: `Added new ${stock.type} investment: ${stock.name} (${stock.symbol})`,
+            icon: 'success',
+            metadata: {
+                stockId: stock.id,
+                symbol: stock.symbol,
+                name: stock.name,
+                type: stock.type,
+                quantity: stock.quantity,
+                buyPrice: stock.buyPrice
             }
         });
 

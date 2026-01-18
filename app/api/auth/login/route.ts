@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { loginSchema } from '@/lib/validations';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 export async function POST(request: NextRequest) {
     try {
@@ -59,7 +60,10 @@ export async function POST(request: NextRequest) {
             });
         }
 
+
+
         return response;
+
     } catch (error: any) {
         console.error('Login error:', error);
 

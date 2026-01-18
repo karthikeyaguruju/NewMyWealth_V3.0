@@ -50,17 +50,17 @@ export async function POST(request: NextRequest) {
             <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; margin-bottom: 30px;">
                 <div style="background-color: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; text-align: center;">
                     <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Income</p>
-                    <p style="margin: 5px 0 0; color: #10b981; font-size: 20px; font-weight: 700;">$${summary.totalIncome.toLocaleString()}</p>
+                    <p style="margin: 5px 0 0; color: #10b981; font-size: 20px; font-weight: 700;">₹${summary.totalIncome.toLocaleString()}</p>
                 </div>
                 <div style="background-color: rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; text-align: center;">
                     <p style="margin: 0; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 1px;">Expenses</p>
-                    <p style="margin: 5px 0 0; color: #ef4444; font-size: 20px; font-weight: 700;">$${summary.totalExpenses.toLocaleString()}</p>
+                    <p style="margin: 5px 0 0; color: #ef4444; font-size: 20px; font-weight: 700;">₹${summary.totalExpenses.toLocaleString()}</p>
                 </div>
             </div>
 
             <div style="background: linear-gradient(to right, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05)); padding: 20px; border-radius: 12px; margin-bottom: 30px; text-align: center; border: 1px solid rgba(16, 185, 129, 0.2);">
                 <p style="margin: 0; color: #94a3b8; font-size: 14px;">Total Savings & Investments</p>
-                <p style="margin: 5px 0 0; color: #10b981; font-size: 32px; font-weight: 800;">$${(summary.totalIncome - summary.totalExpenses).toLocaleString()}</p>
+                <p style="margin: 5px 0 0; color: #10b981; font-size: 32px; font-weight: 800;">₹${(summary.totalIncome - summary.totalExpenses).toLocaleString()}</p>
             </div>
 
             <h3 style="border-bottom: 1px solid #2d3748; padding-bottom: 10px; margin-bottom: 15px; font-size: 18px;">Top Categories</h3>
@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
                 .map(([name, amount]) => `
                     <tr>
                         <td style="padding: 10px 0; color: #cbd5e1;">${name}</td>
-                        <td style="padding: 10px 0; text-align: right; color: #ffffff; font-weight: 600;">$${(amount as number).toLocaleString()}</td>
+                        <td style="padding: 10px 0; text-align: right; color: #ffffff; font-weight: 600;">₹${(amount as number).toLocaleString()}</td>
                     </tr>
                 `).join('')}
             </table>
@@ -86,11 +86,15 @@ export async function POST(request: NextRequest) {
 </html>
         `;
 
-        await sendEmail({
+        const { success, error: mailError } = await sendEmail({
             to: user.email!,
             subject: `📊 Your Wealth Summary for ${monthName} ${year}`,
             html: emailHtml
         });
+
+        if (!success) {
+            return NextResponse.json({ error: mailError || 'Failed to send email' }, { status: 500 });
+        }
 
         return NextResponse.json({ message: 'Report sent successfully' });
     } catch (error) {

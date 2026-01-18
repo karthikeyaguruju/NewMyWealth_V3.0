@@ -130,17 +130,11 @@ export function TransactionForm({ isOpen, onClose, onSuccess, transaction, initi
 
             showToast('success', transaction ? 'Transaction updated successfully' : 'Transaction added successfully');
 
-            // Log activity
-            if (transaction) {
-                logTransactionUpdated(parseFloat(formData.amount), formData.category);
-            } else {
-                logTransactionAdded(parseFloat(formData.amount), formData.category, formData.type);
-            }
-
             setLoading(false);
             onSuccess();
             onClose();
             resetForm();
+
         } catch (err) {
             const errorMessage = 'An error occurred. Please try again.';
             setError(errorMessage);

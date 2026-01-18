@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { stockSchema } from '@/lib/validations';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 async function getUser(request: NextRequest) {
     const token = request.cookies.get('token')?.value;
@@ -28,6 +29,15 @@ export async function PUT(
         const body = await request.json();
         const validatedData = stockSchema.parse(body);
 
+        // Get existing stock for logging
+        const existingStock = await prisma.stock.findUnique({
+            where: { id: params.id, userId: user.id }
+        });
+
+        if (!existingStock) {
+            return NextResponse.json({ error: 'Investment not found' }, { status: 404 });
+        }
+
         const stock = await prisma.stock.update({
             where: {
                 id: params.id,
@@ -41,6 +51,25 @@ export async function PUT(
                 broker: validatedData.broker,
                 type: validatedData.type.toUpperCase(),
                 date: validatedData.date ? new Date(validatedData.date) : undefined,
+            }
+        });
+
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.INVESTMENT_UPDATED,
+            description: `Updated ${stock.type} investment: ${stock.name} (${stock.symbol})`,
+            icon: 'info',
+            metadata: {
+                stockId: stock.id,
+                symbol: stock.symbol,
+                name: stock.name,
+                type: stock.type,
+                previousData: {
+                    symbol: existingStock.symbol,
+                    quantity: existingStock.quantity,
+                    buyPrice: existingStock.buyPrice
+                }
             }
         });
 
@@ -64,10 +93,33 @@ export async function DELETE(
             return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
         }
 
+        // Get stock data before deleting for logging
+        const stock = await prisma.stock.findUnique({
+            where: { id: params.id, userId: user.id }
+        });
+
+        if (!stock) {
+            return NextResponse.json({ error: 'Investment not found' }, { status: 404 });
+        }
+
         await prisma.stock.delete({
             where: {
                 id: params.id,
                 userId: user.id
+            }
+        });
+
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.INVESTMENT_DELETED,
+            description: `Deleted ${stock.type} investment: ${stock.name} (${stock.symbol})`,
+            icon: 'error',
+            metadata: {
+                stockId: stock.id,
+                symbol: stock.symbol,
+                name: stock.name,
+                type: stock.type
             }
         });
 

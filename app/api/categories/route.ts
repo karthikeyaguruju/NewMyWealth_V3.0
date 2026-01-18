@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 // Helper to get user from token
 async function getUser(request: NextRequest) {
@@ -195,6 +196,19 @@ export async function POST(request: NextRequest) {
                 categoryGroup: finalGroup,
                 name: name,
                 isDefault: false,
+            }
+        });
+
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.CATEGORY_ADDED,
+            description: `Added new ${category.categoryGroup} category: ${category.name}`,
+            icon: 'success',
+            metadata: {
+                categoryId: category.id,
+                categoryName: category.name,
+                categoryGroup: category.categoryGroup
             }
         });
 

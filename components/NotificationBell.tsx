@@ -12,6 +12,7 @@ interface ActivityLog {
     icon?: string;
     metadata?: any;
     createdAt: string;
+    isDismissed?: boolean;
 }
 
 const MAX_VISIBLE_LOGS = 5; // Show only 5 logs in dropdown
@@ -57,11 +58,16 @@ export function NotificationBell() {
             const response = await fetch(`/api/activity-logs?limit=${MAX_VISIBLE_LOGS}`);
             if (response.ok) {
                 const data = await response.json();
-                setLogs(data.logs || []);
-                setTotalLogs(data.total || data.logs?.length || 0);
-                // Count activities from the last hour as "unread"
+                const allLogs = data.logs || [];
+                // Filter out dismissed logs for the bell
+                const visibleLogs = allLogs.filter((log: ActivityLog) => !log.isDismissed);
+
+                setLogs(visibleLogs);
+                setTotalLogs(data.total || visibleLogs.length || 0);
+
+                // Count unread activities from the last hour that are not dismissed
                 const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-                const recentCount = (data.logs || []).filter(
+                const recentCount = visibleLogs.filter(
                     (log: ActivityLog) => new Date(log.createdAt) > oneHourAgo
                 ).length;
                 setUnreadCount(recentCount);
@@ -75,14 +81,22 @@ export function NotificationBell() {
 
     const clearAllLogs = async () => {
         try {
-            const response = await fetch('/api/activity-logs', { method: 'DELETE' });
+            // "Dismiss" all current logs in the UI instead of deleting them from DB
+            const logIds = logs.map(l => l.id);
+            if (logIds.length === 0) return;
+
+            const response = await fetch('/api/activity-logs/dismiss', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ids: logIds })
+            });
+
             if (response.ok) {
                 setLogs([]);
-                setTotalLogs(0);
                 setUnreadCount(0);
             }
         } catch (error) {
-            console.error('Failed to clear activity logs:', error);
+            console.error('Failed to dismiss activity logs:', error);
         }
     };
 

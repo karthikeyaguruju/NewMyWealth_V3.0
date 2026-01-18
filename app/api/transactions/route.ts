@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
 import { transactionSchema } from '@/lib/validations';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 /** Extract user from Supabase token */
 async function getUser(request: NextRequest) {
@@ -153,8 +154,23 @@ export async function POST(request: NextRequest) {
                 categoryRel: true
             }
         });
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.TRANSACTION_ADDED,
+            description: `Added ${transaction.type} transaction for ${transaction.amount} in ${transaction.categoryRel?.name || transaction.category || 'Uncategorized'}`,
+            icon: 'success',
+            metadata: {
+                transactionId: transaction.id,
+                amount: transaction.amount,
+                type: transaction.type,
+                category: transaction.categoryRel?.name || transaction.category
+            }
+        });
+
 
         return NextResponse.json({
+
             transaction: {
                 ...transaction,
                 date: transaction.date.toISOString(),

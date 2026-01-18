@@ -73,21 +73,6 @@ export async function POST(request: NextRequest) {
     }
 }
 
-// DELETE /api/activity-logs - Clear all activity logs for the user
-export async function DELETE(request: NextRequest) {
-    try {
-        const userId = await getUserId(request);
-        if (!userId) {
-            return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-        }
 
-        await prisma.activityLog.deleteMany({
-            where: { userId },
-        });
+// Removed DELETE method to prevent clearing activity logs as per user request
 
-        return NextResponse.json({ message: 'Activity logs cleared' }, { status: 200 });
-    } catch (error) {
-        console.error('Clear activity logs error:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
-    }
-}

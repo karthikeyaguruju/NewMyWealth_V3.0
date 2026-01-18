@@ -37,8 +37,12 @@ const ACTION_TYPES = [
     { value: 'transaction_added', label: 'Transactions Added' },
     { value: 'transaction_updated', label: 'Transactions Updated' },
     { value: 'transaction_deleted', label: 'Transactions Deleted' },
-    { value: 'investment_terminated', label: 'Investments Terminated' },
+    { value: 'investment_added', label: 'Investments Added' },
+    { value: 'investment_updated', label: 'Investments Updated' },
+    { value: 'investment_deleted', label: 'Investments Deleted' },
     { value: 'budget', label: 'Budget Changes' },
+    { value: 'login', label: 'Logins' },
+    { value: 'logout', label: 'Logouts' },
 ];
 
 export function ActivityLogTab() {
@@ -100,24 +104,7 @@ export function ActivityLogTab() {
         fetchLogs();
     };
 
-    const clearAllLogs = async () => {
-        if (!confirm('Are you sure you want to clear all activity logs? This action cannot be undone.')) {
-            return;
-        }
 
-        try {
-            const response = await fetch('/api/activity-logs', { method: 'DELETE' });
-            if (response.ok) {
-                setLogs([]);
-                setTotalItems(0);
-                setTotalPages(1);
-                showToast('success', 'Activity logs cleared successfully');
-            }
-        } catch (error) {
-            console.error('Failed to clear activity logs:', error);
-            showToast('error', 'Failed to clear activity logs');
-        }
-    };
 
     const getActionIcon = (action: string) => {
         const iconClass = "w-5 h-5";
@@ -183,17 +170,7 @@ export function ActivityLogTab() {
                         Track all your actions and changes in the app
                     </p>
                 </div>
-                {totalItems > 0 && (
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={clearAllLogs}
-                        icon={<Trash2 size={16} />}
-                        className="text-red-500 border-red-300 hover:bg-red-50 dark:hover:bg-red-900/20"
-                    >
-                        Clear All
-                    </Button>
-                )}
+
             </div>
 
             {/* Filters */}

@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { supabase } from '@/lib/supabase';
 import { transactionSchema } from '@/lib/validations';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 
 /** Extract user from Supabase token */
 async function getUser(request: NextRequest) {
@@ -66,6 +67,25 @@ export async function PUT(
             }
         });
 
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.TRANSACTION_UPDATED,
+            description: `Updated ${transaction.type} transaction: ${transaction.amount} in ${transaction.categoryRel?.name || transaction.category || 'Uncategorized'}`,
+            icon: 'info',
+            metadata: {
+                transactionId: transaction.id,
+                amount: transaction.amount,
+                type: transaction.type,
+                category: transaction.categoryRel?.name || transaction.category,
+                previousData: {
+                    amount: existingTransaction.amount,
+                    type: existingTransaction.type,
+                    category: existingTransaction.category
+                }
+            }
+        });
+
         return NextResponse.json({
             transaction: {
                 ...transaction,
@@ -111,6 +131,20 @@ export async function DELETE(
         }
 
         await prisma.transaction.delete({ where: { id } });
+
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.TRANSACTION_DELETED,
+            description: `Deleted ${transaction.type} transaction for ${transaction.amount}`,
+            icon: 'error',
+            metadata: {
+                transactionId: transaction.id,
+                amount: transaction.amount,
+                type: transaction.type,
+                category: transaction.category
+            }
+        });
 
         return NextResponse.json({ message: 'Transaction deleted successfully' }, { status: 200 });
     } catch (error) {

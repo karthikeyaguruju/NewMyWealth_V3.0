@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
 import { prisma } from '@/lib/db';
+import { logActivity, ActivityActions } from '@/lib/activity-logger';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
 
 async function getUser(request: NextRequest) {
@@ -122,6 +123,20 @@ export async function POST(request: NextRequest) {
             },
             include: {
                 category: true
+            }
+        });
+
+        // Log activity
+        await logActivity({
+            userId: user.id,
+            action: ActivityActions.BUDGET_SET,
+            description: `Set budget of ${budget.amount} for ${budget.category?.name || categoryName} in ${budget.month}`,
+            icon: 'info',
+            metadata: {
+                budgetId: budget.id,
+                amount: budget.amount,
+                category: budget.category?.name || categoryName,
+                month: budget.month
             }
         });
 
